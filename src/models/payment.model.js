@@ -17,7 +17,6 @@ exports.create = async (data) => {
   ]);
 };
 
-// --- FIX: Robust check for existing payments ---
 exports.isPaid = async (bookingId) => {
   const query = `
     SELECT TOP 1 1 
@@ -27,7 +26,7 @@ exports.isPaid = async (bookingId) => {
   const result = await base.executeOne(query, [
     { name: 'bookingId', type: sql.UniqueIdentifier, value: bookingId }
   ]);
-  return !!result; // Returns true if paid, false otherwise
+  return !!result; 
 };
 
 exports.findByBookingId = async (bookingId) => {

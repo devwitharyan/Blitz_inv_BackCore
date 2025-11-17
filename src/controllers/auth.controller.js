@@ -4,11 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const userModel = require('../models/user.model');
 const { jwtSecret } = require('../config/env');
 
-// --- START OF FIX ---
-// Import the profile models
 const providerModel = require('../models/provider.model');
 const customerModel = require('../models/customer.model');
-// --- END OF FIX ---
 
 exports.register = async (req, res) => {
   try {
@@ -42,17 +39,12 @@ exports.register = async (req, res) => {
       role,
     });
     
-    // --- START OF FIX ---
-    // After creating the user, create their associated profile
     if (role === 'provider') {
       await providerModel.create(id);
     } else if (role === 'customer') {
       await customerModel.create(id);
     }
-    // (Admin role does not need a separate profile in this schema)
-    // --- END OF FIX ---
 
-    // The token payload uses 'id', not 'userId'
     const token = jwt.sign({ id, role }, jwtSecret, { expiresIn: '7d' });
 
     return res.status(201).json({
@@ -100,7 +92,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // The token payload uses 'id' and 'role'
     const token = jwt.sign(
       { id: user.Id, role: user.Role },
       jwtSecret,
@@ -123,11 +114,8 @@ exports.login = async (req, res) => {
   }
 };
 
-// --- ADDED THIS FUNCTION ---
-// (To match the Swagger spec and provide a useful endpoint)
 exports.getProfile = async (req, res) => {
   try {
-    // We get the user's ID from the token (using req.user.id)
     const userId = req.user.id;
     
     const user = await userModel.findById(userId); 
@@ -139,7 +127,6 @@ exports.getProfile = async (req, res) => {
       });
     }
 
-    // Don't send the password hash!
     const { PasswordHash, ...userProfile } = user;
 
     return res.json({
@@ -157,4 +144,3 @@ exports.getProfile = async (req, res) => {
     });
   }
 };
-// --- END ---

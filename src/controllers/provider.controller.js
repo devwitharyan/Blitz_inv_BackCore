@@ -6,7 +6,6 @@ exports.getMyProfile = async (req, res) => {
   try {
     const provider = await providerModel.findByUserId(req.user.id);
     
-    // Also fetch their selected services
     if (provider) {
         const services = await providerModel.getMyServices(provider.Id);
         provider.services = services;
@@ -27,13 +26,11 @@ exports.updateMyProfile = async (req, res) => {
   }
 };
 
-// --- NEW: Service Management ---
 exports.addMyService = async (req, res) => {
     try {
         const { serviceId, customPrice } = req.body;
         const provider = await providerModel.findByUserId(req.user.id);
         
-        // Validate Service Exists
         const service = await serviceModel.findById(serviceId);
         if (!service) return error(res, 'Service not found', 404);
 
@@ -65,7 +62,6 @@ exports.getMyServices = async (req, res) => {
         return error(res, err.message);
     }
 };
-// -------------------------------
 
 exports.submitVerification = async (req, res) => {
   try {

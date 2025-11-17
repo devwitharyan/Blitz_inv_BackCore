@@ -44,7 +44,6 @@ exports.listEarningsByProvider = async (providerId) => {
   ]);
 };
 
-// --- NEW FUNCTION: Add credit/debit to wallet ---
 exports.addTransaction = async ({ providerId, bookingId, amount, type }) => {
   const query = `
     INSERT INTO ProviderEarnings (ProviderId, BookingId, Amount, Type)

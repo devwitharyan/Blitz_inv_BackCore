@@ -1,7 +1,6 @@
 const sql = require('mssql');
 const { poolConnect } = require('../config/db');
 
-// --- EXISTING FUNCTIONS ---
 
 exports.findByEmailOrMobile = async (email, mobile) => {
   try {
@@ -53,14 +52,13 @@ exports.create = async (data) => {
         VALUES (@Id, @Name, @Email, @Mobile, @PasswordHash, @Role);
       `);
 
-    return data; // return inserted data for further use
+    return data; 
   } catch (err) {
     console.error("❌ DB Error in userModel.create:", err);
     throw new Error("Database query failed");
   }
 };
 
-// --- NEW ADMIN FUNCTIONS ---
 
 exports.findAll = async (role) => {
   try {
@@ -96,7 +94,6 @@ exports.getFullProfile = async (id) => {
     if (!user) return null;
 
     let profile = null;
-    // Note: User.Role column name is capitalized from SQL, must match!
     if (user.Role === 'provider') { 
       const provResult = await pool.request()
         .input('UserId', sql.UniqueIdentifier, id)

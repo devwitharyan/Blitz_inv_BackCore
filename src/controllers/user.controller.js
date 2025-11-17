@@ -1,11 +1,10 @@
 const userModel = require('../models/user.model');
 const providerModel = require('../models/provider.model');
 const customerModel = require('../models/customer.model');
-const addressModel = require('../models/address.model'); // <--- ADDED THIS IMPORT
+const addressModel = require('../models/address.model'); 
 const mediaModel = require('../models/media.model');
 const { success, error } = require('../utils/response');
 
-// 1. List All Users
 exports.listUsers = async (req, res) => {
   try {
     const { role } = req.query;
@@ -18,38 +17,31 @@ exports.listUsers = async (req, res) => {
     // back to the Admin Panel's browser console.
     return error(res, "Database query failed", 500, { detail: err.message }); 
     // 👆 END TEMPORARY FIX 👆
+
+    // can be removed later
   }
 };
 
-// 2. Get Full User Details
 exports.getUserDetails = async (req, res) => {
   try {
     const userId = req.params.id;
-    // userModel.getFullProfile fetches { user, profile }
     const { user, profile } = await userModel.getFullProfile(userId); 
     
     if (!user) return error(res, 'User not found', 404);
-
-    // 1. Fetch Shared Data (Addresses and User Media)
     const addresses = await addressModel.listByUserId(userId);
-    // Profile media (for profile pic/avatar) linked directly to the User ID
     let media = await mediaModel.listByEntity('User', userId); 
     
     let services = [];
     
-    // 2. Fetch Role-Specific Data
     if (user.Role.toLowerCase() === 'provider' && profile) {
       const providerId = profile.Id;
       
-      // Provider's linked services/skills
       services = await providerModel.getMyServices(providerId);
       
-      // Documents (Aadhar, PAN) linked to the Provider Profile ID
       const providerMedia = await mediaModel.listByEntity('Provider', providerId); 
-      media = [...media, ...providerMedia]; // Combine all media
+      media = [...media, ...providerMedia]; 
     }
 
-    // 3. Aggregate everything into a single response object
     const data = { user, profile, addresses, media, services };
 
     return success(res, data);
@@ -59,7 +51,6 @@ exports.getUserDetails = async (req, res) => {
   }
 };
 
-// 3. Toggle Active Status
 exports.toggleStatus = async (req, res) => {
   try {
     const { isActive } = req.body;
@@ -70,18 +61,15 @@ exports.toggleStatus = async (req, res) => {
   }
 };
 
-// 4. Update User Details
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { user, profile } = req.body;
 
-    // Update Basic User Info
     if (user) {
       await userModel.updateBasicInfo(id, user);
     }
 
-    // Update Profile Info based on Role
     const fullData = await userModel.getFullProfile(id);
     if (!fullData || !fullData.user) return error(res, "User not found", 404);
 

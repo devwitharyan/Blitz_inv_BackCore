@@ -1,11 +1,7 @@
 const multer = require('multer');
 
-// Define storage (temporary; optionally extend to use disk or cloud storage)
 const storage = multer.memoryStorage();
 
-/**
- * File filter to restrict image uploads
- */
 const fileFilter = (req, file, cb) => {
   if (!file.mimetype.startsWith('image/')) {
     cb(new Error('Only image files are allowed'), false);

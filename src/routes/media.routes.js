@@ -17,7 +17,6 @@ router.post(
   mediaController.uploadMedia
 );
 
-// 🚨 CRITICAL FIX: This specific route MUST come BEFORE the generic one below
 // GET /media/file/:id  (direct file download)
 router.get(
   '/file/:id',

@@ -24,13 +24,11 @@ router.post(
   authController.login
 );
 
-// --- ADDED THIS ROUTE ---
 // GET /auth/profile
 router.get(
   '/profile',
   authMiddleware.requireAuth, // Protect the route
   authController.getProfile // Add new controller function
 );
-// --- END OF FIX ---
 
 module.exports = router;

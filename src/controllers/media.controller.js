@@ -38,16 +38,10 @@ exports.getMediaById = async (req, res) => {
     const file = await mediaModel.findById(req.params.id);
     if (!file) return error(res, 'Not found', 404);
 
-    // --- FIX FOR net::ERR_BLOCKED_BY_RESPONSE.NotSameOrigin ---
-    // This header is essential for allowing the image to load cross-origin (e.g., C# App on one port, Node.js API on port 3000).
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
-    // --- FIX 2.B: Add Caching Headers ---
-    // "public": can be cached by intermediate proxies/CDNs
-    // "max-age=86400": Cache is valid for 24 hours (86400 seconds)
     res.setHeader('Cache-Control', 'public, max-age=86400');
     
-    // Ensure correct content type
     res.setHeader('Content-Type', `image/${file.Format || 'jpeg'}`);
     
     res.send(file.ImageData);

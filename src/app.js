@@ -5,7 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
-const routes = require('./routes'); // Route index
+const routes = require('./routes'); 
 const configureSwaggerDocs = require('./docs/swagger.config');
 const errorMiddleware = require('./middleware/error.middleware');
 

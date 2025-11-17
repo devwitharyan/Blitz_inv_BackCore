@@ -3,7 +3,7 @@ const { success, error } = require('../utils/response');
 
 exports.listMyNotifications = async (req, res) => {
   try {
-    const results = await notificationModel.listByUser(req.user.id); // Corrected
+    const results = await notificationModel.listByUser(req.user.id); 
     return success(res, results);
   } catch (err) {
     return error(res, err.message);

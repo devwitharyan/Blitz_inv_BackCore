@@ -7,7 +7,6 @@ const validate = require('../middleware/validate.middleware');
 const providerValidator = require('../validators/provider.validator');
 const { body } = require('express-validator');
 
-// --- PROVIDER PROFILE ROUTES ---
 
 // GET /providers/me (Includes linked services)
 router.get(
@@ -37,7 +36,6 @@ router.post(
   providerController.submitVerification
 );
 
-// --- NEW: SERVICE MANAGEMENT ROUTES ---
 
 // GET /providers/me/services (List my skills)
 router.get(
@@ -68,7 +66,6 @@ router.delete(
   providerController.removeMyService
 );
 
-// --- PUBLIC / ADMIN ROUTES ---
 
 // GET /providers (List all)
 router.get(

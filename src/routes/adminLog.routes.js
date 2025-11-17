@@ -5,7 +5,7 @@ const router = express.Router();
 
 const adminLogController = require('../controllers/adminLog.controller');
 const authMiddleware = require('../middleware/auth.middleware');
-const { requireRole } = authMiddleware; // Correct destructuring
+const { requireRole } = authMiddleware; 
 
 // GET: List all admin logs (Admin-only)
 router.get('/', authMiddleware.requireAuth, requireRole('admin'), adminLogController.listLogs);

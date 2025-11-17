@@ -1,7 +1,6 @@
 const { sql } = require('../config/db');
 const base = require('./base.model');
 
-// --- ADDED THIS FUNCTION ---
 exports.create = async (userId) => {
   const query = `
     INSERT INTO Customers (UserId)
@@ -12,7 +11,6 @@ exports.create = async (userId) => {
     { name: 'userId', type: sql.UniqueIdentifier, value: userId }
   ]);
 };
-// --- END ---
 
 exports.findByUserId = async (userId) => {
   const query = `SELECT * FROM Customers WHERE UserId = @userId`;

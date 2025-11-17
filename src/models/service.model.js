@@ -33,14 +33,12 @@ exports.create = async (data) => {
   ]);
 };
 
-// --- START OF FIX ---
 exports.update = async (id, data) => {
   const { name, description, basePrice, duration } = data;
   
   const params = [{ name: 'id', type: sql.UniqueIdentifier, value: id }];
   const setClauses = [];
 
-  // Dynamically add fields to the update query only if they are provided
   if (name !== undefined) {
     setClauses.push('Name = @name');
     params.push({ name: 'name', type: sql.NVarChar, value: name });
@@ -58,12 +56,10 @@ exports.update = async (id, data) => {
     params.push({ name: 'duration', type: sql.Int, value: duration });
   }
 
-  // If no fields are sent, just return the current service data
   if (setClauses.length === 0) {
     return this.findById(id);
   }
 
-  // Build the dynamic query
   const query = `
     UPDATE Services
     SET ${setClauses.join(', ')}, UpdatedAt = SYSUTCDATETIME()
@@ -73,7 +69,6 @@ exports.update = async (id, data) => {
   
   return base.executeOne(query, params);
 };
-// --- END OF FIX ---
 
 exports.delete = async (id) => {
   const query = `DELETE FROM Services WHERE Id = @id`;

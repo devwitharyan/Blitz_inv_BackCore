@@ -1,28 +1,22 @@
 const { sql, poolConnect } = require('../config/db');
 const base = require('./base.model');
 
-// --- FIX 1.C: Transactional Creation ---
 exports.create = async (data) => {
   const { customerId, addressId, scheduledAt, services, providerId } = data;
 
-  // Calculate price
   const totalPrice = services.reduce((sum, svc) => {
     return sum + (parseFloat(svc.price) || 0);
   }, 0);
 
-  // 1. Get Connection Pool
   const pool = await poolConnect;
   
-  // 2. Start Transaction
   const transaction = new sql.Transaction(pool);
   
   try {
     await transaction.begin();
 
-    // Important: We must use `request` attached to `transaction`
     const request = new sql.Request(transaction);
 
-    // Step A: Insert Booking
     request.input('customerId', sql.UniqueIdentifier, customerId);
     request.input('addressId', sql.UniqueIdentifier, addressId);
     request.input('scheduledAt', sql.DateTime2, scheduledAt);
@@ -38,9 +32,8 @@ exports.create = async (data) => {
     const bookingResult = await request.query(bookingQuery);
     const bookingId = bookingResult.recordset[0].BookingId;
 
-    // Step B: Insert Services (Batch)
     for (const svc of services) {
-      const svcRequest = new sql.Request(transaction); // New request per query in transaction
+      const svcRequest = new sql.Request(transaction); 
       svcRequest.input('bookingId', sql.UniqueIdentifier, bookingId);
       svcRequest.input('serviceId', sql.UniqueIdentifier, svc.serviceId);
       svcRequest.input('price', sql.Decimal(18, 2), svc.price);
@@ -52,14 +45,11 @@ exports.create = async (data) => {
       await svcRequest.query(serviceQuery);
     }
 
-    // Step C: Commit if all good
     await transaction.commit();
 
-    // Return the full booking object
     return this.findById(bookingId);
 
   } catch (err) {
-    // Step D: Rollback if ANYTHING fails
     await transaction.rollback();
     console.error("❌ Transaction Error in createBooking:", err);
     throw new Error("Booking creation failed. Please try again.");
@@ -82,8 +72,6 @@ exports.hasPreviousRelation = async (customerId, providerId) => {
 };
 
 exports.findNearbyPending = async (lat, long, radiusKm = 5) => {
-  // Adjusted to use Spatial Logic if you updated DB, or keeping simplified logic here
-  // (Assuming we stick to the fix in ProviderModel mostly, but here is the cleaner math version)
   const query = `
     SELECT B.*, A.City, A.Line1,
     (A.GeoLocation.STDistance(geography::Point(@lat, @long, 4326)) / 1000) AS Distance

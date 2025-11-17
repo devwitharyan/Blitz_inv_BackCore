@@ -1,21 +1,18 @@
 const reviewModel = require('../models/review.model');
-const bookingModel = require('../models/booking.model'); // 1. Import booking model
+const bookingModel = require('../models/booking.model'); 
 const { success, error } = require('../utils/response');
 
 exports.createReview = async (req, res) => {
   try {
-    // 2. Get data from request
     const { bookingId, serviceId, rating, comment } = req.body;
-    const customerId = req.user.id; // 3. Corrected: use req.user.id
+    const customerId = req.user.id; 
 
-    // 4. Find the booking
     const booking = await bookingModel.findById(bookingId);
 
     if (!booking) {
       return error(res, 'Booking not found', 404);
     }
 
-    // 5. Validate permissions and status
     if (booking.CustomerId !== customerId) {
       return error(res, 'You are not authorized to review this booking', 403);
     }
@@ -28,12 +25,11 @@ exports.createReview = async (req, res) => {
       return error(res, 'This booking has no provider to review', 400);
     }
 
-    // 6. All checks passed, create the review data
     const data = {
       bookingId,
       serviceId,
       customerId,
-      providerId: booking.ProviderId, // 7. Get ProviderId from the booking
+      providerId: booking.ProviderId, 
       rating,
       comment,
     };

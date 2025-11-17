@@ -8,21 +8,16 @@ const { poolConnect } = require('../config/db');
  */
 exports.execute = async (query, params = []) => {
   try {
-    // 1. Await the connection pool
     const pool = await poolConnect;
 
-    // 2. Create a new request object from the pool
     const request = pool.request();
 
-    // 3. Add all parameters to the request
     if (params) {
       params.forEach(param => {
-        // Example: request.input('id', sql.UniqueIdentifier, '...value...')
         request.input(param.name, param.type, param.value);
       });
     }
 
-    // 4. Execute the query
     const result = await request.query(query);
     return result.recordset || [];
     

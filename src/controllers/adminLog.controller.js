@@ -7,7 +7,7 @@ exports.logAction = async (req, res) => {
     if (!action) {
       return error(res, 'Action is required', 400);
     }
-    const adminId = req.user.id; // Corrected: Must ensure req.user.id is available
+    const adminId = req.user.id; 
 
     await adminLogModel.logAction(adminId, action);
     return success(res, null, 'Admin action logged');

@@ -1,19 +1,16 @@
 const payoutModel = require('../models/payout.model');
-const providerModel = require('../models/provider.model'); // 1. Import provider model
+const providerModel = require('../models/provider.model');
 const { success, error } = require('../utils/response');
 
 exports.createPayoutRequest = async (req, res) => {
   try {
-    // 2. Get the provider's User.Id from the token
-    const userId = req.user.id; // Corrected: use .id
+    const userId = req.user.id; 
 
-    // 3. Find the provider's profile using their User.Id
     const provider = await providerModel.findByUserId(userId);
     if (!provider) {
       return error(res, 'Provider profile not found', 404);
     }
 
-    // 4. Use the correct Provider.Id (the profile ID)
     const data = { ...req.body, providerId: provider.Id };
     const result = await payoutModel.createRequest(data);
     
@@ -26,9 +23,8 @@ exports.createPayoutRequest = async (req, res) => {
 exports.listPayoutRequests = async (req, res) => {
   try {
     let providerId = null;
-    // If not admin, find the provider's profile ID
     if (req.user.role !== 'admin') {
-      const provider = await providerModel.findByUserId(req.user.id); // Corrected: use .id
+      const provider = await providerModel.findByUserId(req.user.id); 
       if (!provider) {
         return error(res, 'Provider profile not found', 404);
       }

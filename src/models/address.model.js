@@ -21,7 +21,6 @@ exports.create = async (data) => {
 };
 
 exports.listByUserId = async (userId) => {
-  // --- FIX: Explicitly select all required columns (including Lat/Long) ---
   const query = `
     SELECT Id, UserId, Label, Line1, Line2, City, State, Pincode, Latitude, Longitude, CreatedAt, UpdatedAt 
     FROM Addresses 
@@ -29,14 +28,10 @@ exports.listByUserId = async (userId) => {
   `;
   return base.execute(query, [{ name: 'userId', type: sql.UniqueIdentifier, value: userId }]);
 };
-// --- END OF FIX ---
-
-// --- ADDED THIS FUNCTION ---
 exports.findById = async (id) => {
   const query = `SELECT * FROM Addresses WHERE Id = @id`;
   return base.executeOne(query, [{ name: 'id', type: sql.UniqueIdentifier, value: id }]);
 };
-// --- END ---
 
 exports.updateById = async (id, userId, data) => {
   const query = `

@@ -8,7 +8,6 @@ exports.createPayment = async (req, res) => {
     const { bookingId, amount, paymentProvider } = req.body;
     const customerId = req.user.id;
 
-    // 1. Validation
     const booking = await bookingModel.findById(bookingId);
     if (!booking) return error(res, 'Booking not found', 404);
 
@@ -19,13 +18,11 @@ exports.createPayment = async (req, res) => {
       return error(res, 'Provider not assigned', 400);
     }
 
-    // 2. CRITICAL FIX: Check if already paid
     const alreadyPaid = await paymentModel.isPaid(bookingId);
     if (alreadyPaid) {
         return error(res, 'Booking is already paid.', 409);
     }
 
-    // 3. Create Payment Record
     const result = await paymentModel.create({
       bookingId,
       amount,
@@ -34,7 +31,6 @@ exports.createPayment = async (req, res) => {
       providerId: booking.ProviderId,
     });
 
-    // 4. Credit Provider Wallet
     await payoutModel.addTransaction({
         providerId: booking.ProviderId,
         bookingId: bookingId,

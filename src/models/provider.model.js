@@ -1,7 +1,6 @@
 const { sql, poolConnect } = require('../config/db');
 const base = require('./base.model');
 
-// Create profile linked to User
 exports.create = async (userId) => {
   const query = `
     INSERT INTO Providers (UserId, VerificationStatus)
@@ -23,7 +22,6 @@ exports.findById = async (id) => {
   return base.executeOne(query, [{ name: 'id', type: sql.UniqueIdentifier, value: id }]);
 };
 
-// --- EDIT PROFILE (Bio, Experience, etc.) ---
 exports.updateByUserId = async (userId, data) => {
   const { bio, experienceYears } = data;
   const query = `
@@ -39,7 +37,6 @@ exports.updateByUserId = async (userId, data) => {
   ]);
 };
 
-// --- NEW: MANAGE SERVICES ---
 exports.addService = async (providerId, serviceId, customPrice) => {
   const query = `
     IF NOT EXISTS (SELECT 1 FROM ProviderServices WHERE ProviderId = @providerId AND ServiceId = @serviceId)
@@ -76,7 +73,6 @@ exports.getMyServices = async (providerId) => {
   ]);
 };
 
-// --- EXISTING FUNCTIONS ---
 exports.submitVerification = async (userId, data) => {
   const { aadharNo, panNo } = data;
   const query = `

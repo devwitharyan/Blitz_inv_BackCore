@@ -25,11 +25,7 @@ router.use('/media', require('./media.routes'));
 router.use('/admin-logs', require('./adminLog.routes'));
 router.use('/users', require('./user.routes'));
 
-// --- START OF FIX ---
-// Added the missing services route
 router.use('/services', require('./service.routes'));
-// Removed the /admin route (it was redundant with /admin-logs)
-// --- END OF FIX ---
 
 // Root health check for /api
 router.get('/', (req, res) => {
@@ -40,7 +36,7 @@ router.get('/', (req, res) => {
       '/api/auth',
       '/api/categories',
       '/api/bookings',
-      '/api/services', // Now correctly listed
+      '/api/services', 
       '...',
     ],
   });

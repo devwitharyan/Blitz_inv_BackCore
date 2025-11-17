@@ -1,9 +1,6 @@
 const categoryModel = require('../models/category.model');
 const { success, error } = require('../utils/response');
 
-/**
- * Get all service categories
- */
 exports.listCategories = async (req, res) => {
   try {
     const data = await categoryModel.getAll();
@@ -13,9 +10,6 @@ exports.listCategories = async (req, res) => {
   }
 };
 
-/**
- * Create a new category (Admin only)
- */
 exports.createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
@@ -31,9 +25,6 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-/**
- * Update an existing category
- */
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -46,9 +37,6 @@ exports.updateCategory = async (req, res) => {
   }
 };
 
-/**
- * Delete a category
- */
 exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
