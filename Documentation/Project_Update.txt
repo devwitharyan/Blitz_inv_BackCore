@@ -1,0 +1,124 @@
+AUTH MODULE
+
+Created
+POST /auth/register	Register customer/provider/admin
+POST /auth/login	Login via email/mobile + password
+
+REMAINING
+POST /auth/send-otp	OTP login for customer/provider
+POST /auth/verify-otp	Mobile/email OTP verification
+POST /auth/admin-login	Separate admin login (optional)
+POST /auth/logout	Blacklist JWT tokens (optional)
+POST /auth/refresh-token	Refresh JWT tokens
+
+
+CUSTOMER MODULE
+
+CREATED
+GET /customers/me	Customer profile
+PUT /customers/me	Update profile
+GET /customers	Admin list customers
+PATCH /customers/:id/active	Admin activate/deactivate
+
+REMAINING
+GET /customers/addresses	List customer addresses
+POST /customers/addresses	Add address
+PUT /customers/addresses/:id	Edit address
+DELETE /customers/addresses/:id	Delete address
+GET /customers/bookings	List all bookings of customer
+GET /customers/wallet	Wallet balance (optional)
+
+
+PROVIDER MODULE
+
+CREATED
+GET /providers/jobs/incoming	Provider incoming jobs
+PATCH /providers/jobs/:id/accept	Accept job
+
+REMAINING
+PATCH /providers/jobs/:id/reject	Reject job
+GET /providers/jobs/scheduled	Provider upcoming jobs
+GET /providers/jobs/history	Completed jobs
+PUT /providers/profile	Update provider details
+POST /providers/kyc	Upload KYC
+PUT /providers/availability	Set availability
+PUT /providers/pricing	Set service pricing
+GET /providers/earnings	Earnings summary
+GET /providers/payouts	Payout history
+POST /providers/withdraw	Request payout
+
+
+SERVICES MODULE
+
+CREATED
+GET /services/categories	List service categories
+GET /services/category/:id	Services in category
+POST /services	Admin create service
+
+REMAINING
+PUT /services/:id	Update service
+DELETE /services/:id	Delete service
+POST /services/category	Create category
+PUT /services/category/:id	Update category
+DELETE /services/category/:id	Delete category
+GET /services/:id/details	Service detail view
+GET /services/search?q=	Search service (optional)
+
+
+BOOKING MODULE
+
+CREATED
+POST /bookings	Create booking
+GET /bookings/upcoming	Customer upcoming bookings
+PATCH /bookings/:id/cancel	Cancel booking
+
+REMAINING
+GET /bookings/history	Customer history
+PATCH /bookings/:id/reschedule	Reschedule
+PATCH /bookings/:id/complete	Mark completed
+GET /bookings/provider/upcoming	Provider upcoming
+GET /bookings/provider/history	Provider history
+GET /bookings/:id	Booking details
+POST /bookings/:id/assign-provider	Auto/manual assign provider
+
+
+PAYMENT MODULE
+
+CREATED
+
+REMAINING
+POST /payment/initiate	Start Razorpay/Stripe payment
+POST /payment/verify	Verify payment
+POST /payment/webhook	Razorpay/Stripe webhook
+GET /payment/:bookingId/status	Payment status
+
+
+REVIEWS & RATINGS MODULE
+
+CREATED
+
+REMAINING
+POST /reviews/:bookingId	Submit review
+GET /reviews/service/:serviceId	Get reviews
+GET /reviews/provider/:providerId	Provider ratings
+
+
+ADMIN PANEL MODULE
+
+CREATED
+GET /admin/dashboard Stats for admin
+
+REMAINING
+GET /admin/providers	List providers
+PATCH /admin/providers/:id/approve	Approve provider
+PATCH /admin/providers/:id/reject	Reject provider
+PUT /admin/providers/:id/category	Update provider category
+GET /admin/bookings	List all bookings
+GET /admin/payments	Payment details
+GET /admin/earnings	Total revenue
+POST /admin/service-category	Create category
+POST /admin/service	Create service (already partially done)
+
+
+12 Created
+34 Remaining

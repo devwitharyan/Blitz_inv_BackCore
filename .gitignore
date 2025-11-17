@@ -1,0 +1,18 @@
+# --- Node.js Dependencies and Environment ---
+node_modules
+npm-debug.log
+.env
+*.log
+
+# --- Visual Studio / .NET WebForms Files ---
+BlitzHomeServiceAdmin/
+api_test_json/
+blitz_env/
+sql/dbhelper.sql
+sql/seed.sql
+WebAPPS_Mock/
+
+admin_verify.html
+dashboard.html
+seeder.html
+HomeService_Emulator.html

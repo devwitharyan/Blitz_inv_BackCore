@@ -1,0 +1,291 @@
+openapi: 3.0.3
+info:
+  title: HomeService Platform API
+  version: 1.0.0
+  description: API documentation for the Home Service Booking Platform
+  contact:
+    name: Support Team
+    email: support@homeservice.com
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Providers
+  - name: Services
+  - name: Bookings
+  - name: Payments
+  - name: Reviews
+  - name: Notifications
+  - name: Payouts
+  - name: Media
+  - name: Admin
+
+paths:
+
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      requestBody:
+        description: User registration data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation error
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login and generate token
+      requestBody:
+        description: Login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get logged-in user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /services:
+    get:
+      tags:
+        - Services
+      summary: List all services
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+    post:
+      tags:
+        - Services
+      summary: Create a new service
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Service details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceRequest'
+      responses:
+        '201':
+          description: Service created
+
+  /bookings:
+    post:
+      tags:
+        - Bookings
+      summary: Create a new booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Booking details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      responses:
+        '201':
+          description: Booking created
+
+    /bookings/me:
+    get:
+      tags:
+        - Bookings
+      summary: List logged-in user bookings (customer or provider)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    # Auth Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - password
+        - role
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        mobile:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [customer, provider, admin]
+
+    LoginRequest:
+      type: object
+      required:
+        - emailOrMobile
+        - password
+      properties:
+        emailOrMobile:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+
+    # User Schema
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        mobile:
+          type: string
+        role:
+          type: string
+
+    # Service Schemas
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        basePrice:
+          type: number
+        duration:
+          type: integer
+        categoryId:
+          type: string
+
+    ServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+        basePrice:
+          type: number
+        duration:
+          type: integer
+
+    # Booking Schemas
+    BookingRequest:
+      type: object
+      required:
+        - addressId
+        - services
+      properties:
+        addressId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        services:
+          type: array
+          items:
+            type: object
+            required:
+              - serviceId
+              - price
+            properties:
+              serviceId:
+                type: string
+              price:
+                type: number
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        providerId:
+          type: string
+        status:
+          type: string
+        price:
+          type: number
+        scheduledAt:
+          type: string
+          format: date-time
