@@ -8,20 +8,24 @@ exports.createReview = async (req, res) => {
     const customerId = req.user.id; 
 
     const booking = await bookingModel.findById(bookingId);
-
+    
     if (!booking) {
+      console.log("1st");
       return error(res, 'Booking not found', 404);
     }
 
     if (booking.CustomerId !== customerId) {
+      console.log("2nd");
       return error(res, 'You are not authorized to review this booking', 403);
     }
 
     if (booking.Status !== 'completed') {
+      console.log("3rd");
       return error(res, 'Only completed bookings can be reviewed', 400);
     }
 
     if (!booking.ProviderId) {
+      console.log("4th");
       return error(res, 'This booking has no provider to review', 400);
     }
 
@@ -33,6 +37,7 @@ exports.createReview = async (req, res) => {
       rating,
       comment,
     };
+
 
     const result = await reviewModel.create(data);
     return success(res, result, 'Review added successfully', 201);

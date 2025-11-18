@@ -125,3 +125,18 @@ exports.assignProvider = async (id, providerId) => {
   const query = `UPDATE Bookings SET ProviderId = @providerId WHERE Id = @id`;
   return base.executeOne(query, [{ name: 'id', type: sql.UniqueIdentifier, value: id }, { name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);
 };
+
+exports.getServicesByBookingId = async (bookingId) => {
+  const query = `
+    SELECT 
+      BS.ServiceId, 
+      BS.Price, 
+      S.Name AS ServiceName 
+    FROM BookingServices BS
+    JOIN Services S ON BS.ServiceId = S.Id
+    WHERE BS.BookingId = @bookingId
+  `;
+  return base.execute(query, [
+    { name: 'bookingId', type: sql.UniqueIdentifier, value: bookingId }
+  ]);
+};

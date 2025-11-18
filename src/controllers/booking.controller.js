@@ -111,7 +111,57 @@ exports.updateBookingStatus = async (req, res) => {
 
 exports.assignProvider = async (req, res) => {
   try {
-    const result = await bookingModel.assignProvider(req.params.id, req.body.providerId);
+    let inputId = req.body.providerId; // ID entered by the Admin
+    let providerProfileId = inputId;
+
+    // 1. Try to find the Provider Profile using the input ID (Assuming it's a User ID)
+    let provider = await providerModel.findByUserId(inputId);
+
+    // 2. If a profile is found, use its actual Providers.Id
+    if (provider) {
+        providerProfileId = provider.Id;
+    } 
+    // 3. If no profile is found, assume the admin entered the correct Providers.Id
+    //    and proceed (the database will handle the final validation/failure if invalid).
+    //    However, to be safer, we can check if the ID is valid now:
+    else {
+        // Double-check if the input ID is actually a valid Providers.Id
+        const existingProvider = await providerModel.findById(inputId);
+        if (!existingProvider) {
+            return error(res, 'Provider ID is invalid or does not exist.', 404);
+        }
+    }
+    
+    // 4. Use the validated/converted Provider Profile ID to update the booking
+    const result = await bookingModel.assignProvider(req.params.id, providerProfileId);
+    
     return success(res, result, 'Assigned');
-  } catch (err) { return error(res, err.message); }
+
+  } catch (err) { 
+      return error(res, err.message); 
+  }
+};
+
+exports.getBookingServices = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Authorization Check: Ensure the user owns the booking before proceeding
+    const booking = await bookingModel.findById(id);
+    const userId = req.user.id;
+    
+    if (!booking || booking.CustomerId !== userId) {
+        return error(res, 'Booking not found or unauthorized', 404);
+    }
+    
+    const services = await bookingModel.getServicesByBookingId(id);
+    
+    if (!services || services.length === 0) {
+        return error(res, 'No services found for this booking', 404);
+    }
+
+    return success(res, services);
+  } catch (err) {
+    return error(res, err.message);
+  }
 };

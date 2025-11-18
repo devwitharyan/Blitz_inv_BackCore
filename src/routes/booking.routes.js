@@ -1,3 +1,5 @@
+// src/routes/booking.routes.js
+
 const express = require('express');
 const router = express.Router();
 
@@ -41,6 +43,16 @@ router.get(
   bookingController.listMyBookings 
 );
 
+// === CRITICAL FIX: Add specific routes here, BEFORE the generic /:id route ===
+// NEW ROUTE: GET /bookings/:id/services (Fetch linked services for a booking)
+router.get(
+  '/:id/services',
+  authMiddleware.requireAuth,
+  bookingController.getBookingServices
+);
+// ============================================================================
+
+
 // GET /bookings/:id (Generic route must be LAST)
 router.get(
   '/:id',
@@ -52,7 +64,7 @@ router.get(
 router.put(
   '/:id/status',
   authMiddleware.requireAuth,
-  authMiddleware.requireAnyRole('provider', 'admin'),
+  authMiddleware.requireAnyRole('provider', 'admin', 'customer'),
   bookingValidator.updateStatus,
   validate,
   bookingController.updateBookingStatus
