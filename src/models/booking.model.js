@@ -126,6 +126,16 @@ exports.assignProvider = async (id, providerId) => {
   return base.executeOne(query, [{ name: 'id', type: sql.UniqueIdentifier, value: id }, { name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);
 };
 
+exports.getStats = async () => {
+  const query = `
+    SELECT 
+        COUNT(Id) AS TotalBookings,
+        SUM(CASE WHEN Status = 'completed' THEN 1 ELSE 0 END) AS CompletedBookings
+    FROM Bookings;
+  `;
+  return base.executeOne(query);
+};
+
 exports.getServicesByBookingId = async (bookingId) => {
   const query = `
     SELECT 

@@ -25,6 +25,7 @@ router.use('/media', require('./media.routes'));
 router.use('/admin-logs', require('./adminLog.routes'));
 router.use('/users', require('./user.routes'));
 
+router.use('/admin', require('./admin.routes'));
 router.use('/services', require('./service.routes'));
 
 // Root health check for /api

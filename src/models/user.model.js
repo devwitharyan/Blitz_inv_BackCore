@@ -1,6 +1,8 @@
 const sql = require('mssql');
 const { poolConnect } = require('../config/db');
+const base = require('./base.model'); // <--- CRITICAL FIX: Base utility import
 
+// --- EXISTING FUNCTIONS (kept original structure for compatibility) ---
 
 exports.findByEmailOrMobile = async (email, mobile) => {
   try {
@@ -52,13 +54,28 @@ exports.create = async (data) => {
         VALUES (@Id, @Name, @Email, @Mobile, @PasswordHash, @Role);
       `);
 
-    return data; 
+    return data;
   } catch (err) {
     console.error("❌ DB Error in userModel.create:", err);
     throw new Error("Database query failed");
   }
 };
 
+// --- NEW ADMIN FUNCTIONS ---
+
+exports.countByRole = async (role, isActive = null) => {
+  let query = `SELECT COUNT(Id) AS Count FROM Users WHERE Role = @role`;
+  const params = [{ name: 'role', type: sql.NVarChar, value: role }];
+
+  if (isActive !== null) {
+      query += ` AND IsActive = @isActive`;
+      params.push({ name: 'isActive', type: sql.Bit, value: isActive });
+  }
+
+  // Uses base.executeOne, which requires the 'base' object
+  const result = await base.executeOne(query, params); 
+  return result ? result.Count : 0;
+};
 
 exports.findAll = async (role) => {
   try {
@@ -85,7 +102,6 @@ exports.getFullProfile = async (id) => {
   try {
     const pool = await poolConnect;
     
-    // 1. Get User
     const userResult = await pool.request()
       .input('Id', sql.UniqueIdentifier, id)
       .query('SELECT * FROM Users WHERE Id = @Id');

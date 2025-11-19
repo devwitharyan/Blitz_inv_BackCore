@@ -47,3 +47,14 @@ exports.listAll = async () => {
   const query = `SELECT * FROM Payments ORDER BY CreatedAt DESC`;
   return base.execute(query);
 };
+
+exports.getRevenueStats = async () => {
+    const query = `
+      SELECT 
+          ISNULL(SUM(Amount), 0) AS TotalRevenue 
+      FROM Payments 
+      WHERE Status = 'success';
+    `;
+    const result = await base.executeOne(query);
+    return result ? result.TotalRevenue : 0;
+};

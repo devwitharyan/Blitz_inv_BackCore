@@ -39,12 +39,19 @@ exports.getMediaById = async (req, res) => {
     if (!file) return error(res, 'Not found', 404);
 
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
     res.setHeader('Cache-Control', 'public, max-age=86400');
     
+    // 1. Set the correct Content-Type (image/png or image/jpeg)
     res.setHeader('Content-Type', `image/${file.Format || 'jpeg'}`);
     
-    res.send(file.ImageData);
+    // 2. Set Content-Length explicitly for reliable transfer of binary data
+    if (file.ImageData && file.ImageData.length) {
+      res.setHeader('Content-Length', file.ImageData.length);
+    }
+    
+    // 3. FIX: Use res.end() with 'binary' encoding to ensure raw buffer transmission
+    res.end(file.ImageData, 'binary');
+    
   } catch (err) {
     return error(res, err.message);
   }
