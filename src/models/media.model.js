@@ -25,7 +25,13 @@ exports.listByEntity = async (entityType, entityId) => {
 };
 
 exports.findById = async (id) => {
-  const query = `SELECT * FROM MediaFiles WHERE Id = @id`;
+  // --- FINAL CRITICAL FIX: Explicitly select ALL columns, forcing ImageData retrieval ---
+  const query = `
+    SELECT 
+        Id, EntityId, EntityType, MediaType, ImageData, Format, CreatedAt 
+    FROM MediaFiles 
+    WHERE Id = @id
+  `;
   return base.executeOne(query, [
     { name: 'id', type: sql.UniqueIdentifier, value: id },
   ]);

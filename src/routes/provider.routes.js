@@ -7,85 +7,60 @@ const validate = require('../middleware/validate.middleware');
 const providerValidator = require('../validators/provider.validator');
 const { body } = require('express-validator');
 
+// ... [Keep existing routes: /me, /me/verify, /me/credits] ...
 
-// GET /providers/me (Includes linked services)
-router.get(
-  '/me',
-  authMiddleware.requireAuth,
-  authMiddleware.requireRole('provider'),
-  providerController.getMyProfile
-);
+// GET /providers/me
+router.get('/me', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerController.getMyProfile);
 
-// PUT /providers/me (Bio, Experience)
-router.put(
-  '/me',
-  authMiddleware.requireAuth,
-  authMiddleware.requireRole('provider'),
-  providerValidator.updateMe,
-  validate,
-  providerController.updateMyProfile
-);
+// PUT /providers/me
+router.put('/me', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerValidator.updateMe, validate, providerController.updateMyProfile);
 
-// POST /providers/me/verify (Docs)
+// POST /providers/me/verify
+router.post('/me/verify', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerValidator.submitVerification, validate, providerController.submitVerification);
+
+// GET /providers/me/credits
+router.get('/me/credits', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerController.getMyCredits);
+
+
+// --- RAZORPAY ROUTES ---
+
+// POST /providers/me/credits/order (Create Order)
 router.post(
-  '/me/verify',
+  '/me/credits/order',
   authMiddleware.requireAuth,
   authMiddleware.requireRole('provider'),
-  providerValidator.submitVerification,
+  [ 
+    body('amount')
+      .isInt({ min: 50 }) // UPDATED: Changed from 1 to 50
+      .withMessage('Amount must be at least 50') 
+  ],
   validate,
-  providerController.submitVerification
+  providerController.createTopUpOrder
 );
 
-
-// GET /providers/me/services (List my skills)
-router.get(
-  '/me/services',
-  authMiddleware.requireAuth,
-  authMiddleware.requireRole('provider'),
-  providerController.getMyServices
-);
-
-// POST /providers/me/services (Add a skill)
+// POST /providers/me/credits/verify (Verify & Add Credits)
 router.post(
-  '/me/services',
+  '/me/credits/verify',
   authMiddleware.requireAuth,
   authMiddleware.requireRole('provider'),
   [
-      body('serviceId').isUUID().withMessage('Valid Service ID required'),
-      body('customPrice').optional().isFloat({ min: 0 })
+    body('razorpay_order_id').notEmpty(),
+    body('razorpay_payment_id').notEmpty(),
+    body('razorpay_signature').notEmpty(),
+    body('amount').isInt({ min: 1 })
   ],
   validate,
-  providerController.addMyService
+  providerController.verifyTopUp
 );
 
-// DELETE /providers/me/services/:serviceId (Remove a skill)
-router.delete(
-  '/me/services/:serviceId',
-  authMiddleware.requireAuth,
-  authMiddleware.requireRole('provider'),
-  providerController.removeMyService
-);
+// ... [Keep Services, Public, and Admin routes] ...
+router.get('/me/services', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerController.getMyServices);
+router.post('/me/services', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), [ body('serviceId').isUUID(), body('customPrice').optional().isFloat() ], validate, providerController.addMyService);
+router.delete('/me/services/:serviceId', authMiddleware.requireAuth, authMiddleware.requireRole('provider'), providerController.removeMyService);
 
-
-// GET /providers (List all)
-router.get(
-  '/', 
-  authMiddleware.requireAuth, 
-  providerController.listProviders
-);
-
-// PUT /providers/:id/verify (Admin Approve)
-router.put(
-  '/:id/verify',
-  authMiddleware.requireAuth,
-  authMiddleware.requireRole('admin'),
-  providerController.verifyProvider
-);
-
-// GET /providers/:id (Public Details)
-router.get(
-  '/:id', 
-  providerController.getProviderById
-);
+router.get('/', authMiddleware.requireAuth, providerController.listProviders);
+router.get('/docs/:userId', authMiddleware.requireAuth, authMiddleware.requireRole('admin'), providerController.listMediaByUserId);
+router.put('/:id/verify', authMiddleware.requireAuth, authMiddleware.requireRole('admin'), providerController.verifyProvider);
+router.get('/:id', providerController.getProviderById);
 
 module.exports = router;

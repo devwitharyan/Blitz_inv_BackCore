@@ -114,25 +114,34 @@ exports.login = async (req, res) => {
   }
 };
 
+// --- UPDATED TO FETCH FULL PROFILE ---
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const user = await userModel.findById(userId); 
+    // Use getFullProfile to get Provider details (VerificationStatus)
+    const fullData = await userModel.getFullProfile(userId); 
 
-    if (!user) {
+    if (!fullData || !fullData.user) {
       return res.status(404).json({
         success: false,
         message: 'User not found',
       });
     }
 
-    const { PasswordHash, ...userProfile } = user;
+    // Combine User and Profile data into one object for the frontend
+    const responseData = {
+      ...fullData.user,
+      profile: fullData.profile // This contains VerificationStatus
+    };
+    
+    // Remove sensitive data
+    delete responseData.PasswordHash;
 
     return res.json({
       success: true,
       message: 'Profile fetched successfully',
-      data: userProfile,
+      data: responseData,
     });
 
   } catch (err) {

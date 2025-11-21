@@ -26,6 +26,14 @@ router.get(
   authMiddleware.requireRole('provider'),
   bookingController.listAvailableJobs
 );
+
+// NEW: GET /bookings/recent-clients
+router.get(
+  '/recent-clients',
+  authMiddleware.requireAuth,
+  authMiddleware.requireRole('provider'),
+  bookingController.getRecentClients
+);
 // --------------------------------------------------
 
 // PUT /bookings/:id/accept (Provider Claims Job)

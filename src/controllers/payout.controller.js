@@ -31,7 +31,6 @@ exports.listPayoutRequests = async (req, res) => {
       providerId = provider.Id;
     }
     
-    // Pass the specific ID (or null for admin) to the model
     const results = await payoutModel.list(providerId);
     return success(res, results);
   } catch (err) {
@@ -41,7 +40,6 @@ exports.listPayoutRequests = async (req, res) => {
 
 exports.updatePayoutStatus = async (req, res) => {
   try {
-    // This route is admin-only, so no ID lookup is needed here
     const result = await payoutModel.updateStatus(req.params.id, req.body.status);
     return success(res, result, 'Payout status updated');
   } catch (err) {
@@ -49,17 +47,31 @@ exports.updatePayoutStatus = async (req, res) => {
   }
 };
 
+// --- THIS IS THE FUNCTION FETCHING YOUR EARNINGS ---
 exports.listMyEarnings = async (req, res) => {
   try {
-    // This also needs the Provider.Id, not the User.Id
-    const provider = await providerModel.findByUserId(req.user.id); // Corrected: use .id
+    console.log(`🔍 Fetching Earnings for User: ${req.user.id}`);
+
+    // 1. Find Provider Profile
+    const provider = await providerModel.findByUserId(req.user.id); 
     if (!provider) {
+      console.log("❌ Provider Profile NOT FOUND");
       return error(res, 'Provider profile not found', 404);
     }
+    
+    console.log(`✅ Found Provider ID: ${provider.Id}`);
 
+    // 2. Fetch Earnings from DB
     const earnings = await payoutModel.listEarningsByProvider(provider.Id);
+    
+    console.log(`📊 Earnings Found: ${earnings.length} records`);
+    if (earnings.length > 0) {
+      console.log(`💰 Sample Amount: ${earnings[0].Amount}`);
+    }
+
     return success(res, earnings);
   } catch (err) {
+    console.error("❌ Error in listMyEarnings:", err);
     return error(res, err.message);
   }
 };

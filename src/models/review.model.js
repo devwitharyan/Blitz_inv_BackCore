@@ -18,6 +18,20 @@ exports.create = async (data) => {
   ]);
 };
 
+// NEW FUNCTION: Check if review exists
+exports.exists = async (bookingId, serviceId) => {
+  const query = `
+    SELECT TOP 1 1 
+    FROM Reviews 
+    WHERE BookingId = @bookingId AND ServiceId = @serviceId
+  `;
+  const result = await base.executeOne(query, [
+    { name: 'bookingId', type: sql.UniqueIdentifier, value: bookingId },
+    { name: 'serviceId', type: sql.UniqueIdentifier, value: serviceId }
+  ]);
+  return !!result;
+};
+
 exports.listByProvider = async (providerId) => {
   const query = `SELECT * FROM Reviews WHERE ProviderId = @providerId`;
   return base.execute(query, [{ name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);

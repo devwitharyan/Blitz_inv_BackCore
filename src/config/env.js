@@ -20,7 +20,10 @@ const requiredEnvs = [
   'DB_USER',
   'DB_PASS',  // Matching your .env (was DB_PASSWORD)
   'DB_HOST',  // Matching your .env (was DB_SERVER)
-  'DB_NAME'
+  'DB_NAME',
+  'RAZORPAY_KEY_ID',    // Razorpay
+  'RAZORPAY_KEY_SECRET',
+  'RAZORPAY_WEBHOOK_SECRET'  // Razorpay
 ];
 
 // 2. Validation: Check if any keys are missing
@@ -44,4 +47,9 @@ module.exports = {
       trustServerCertificate: true,
     },
   },
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET, // NEW
+  }
 };

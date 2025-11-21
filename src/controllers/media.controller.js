@@ -36,23 +36,31 @@ exports.getMediaForEntity = async (req, res) => {
 exports.getMediaById = async (req, res) => {
   try {
     const file = await mediaModel.findById(req.params.id);
-    if (!file) return error(res, 'Not found', 404);
+    if (!file) {
+      console.log(`[MEDIA] 404: File ID ${req.params.id} not found.`);
+      return error(res, 'Not found', 404);
+    }
 
+    // --- CRITICAL NULL/EMPTY CHECK ---
+    if (!file.ImageData || file.ImageData.length === 0) {
+        console.error(`[MEDIA] 500: ImageData is null/empty for ID ${req.params.id}.`);
+        return error(res, 'Image data is missing or corrupted.', 500); 
+    }
+    console.log(`[MEDIA] Serving ID ${req.params.id}. Size: ${file.ImageData.length} bytes.`);
+    // ----------------------------------------
+    
+    // --- FIX 1: Headers for Reliability and Security ---
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    
-    // 1. Set the correct Content-Type (image/png or image/jpeg)
     res.setHeader('Content-Type', `image/${file.Format || 'jpeg'}`);
     
-    // 2. Set Content-Length explicitly for reliable transfer of binary data
-    if (file.ImageData && file.ImageData.length) {
-      res.setHeader('Content-Length', file.ImageData.length);
-    }
-    
-    // 3. FIX: Use res.end() with 'binary' encoding to ensure raw buffer transmission
-    res.end(file.ImageData, 'binary');
+    // --- FIX 2: Explicit Content-Length and res.end() for guaranteed binary stream ---
+    res.setHeader('Content-Length', file.ImageData.length);
+    res.end(file.ImageData, 'binary'); // Send the raw buffer and close the stream
     
   } catch (err) {
+    console.error("Error serving media:", err);
+    // Note: If headers were already sent, this might crash the server, but it's the right final logic
     return error(res, err.message);
   }
 };

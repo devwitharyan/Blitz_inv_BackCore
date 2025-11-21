@@ -25,7 +25,7 @@ CREATE TABLE Customers (
     FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
 
--- Providers Table
+-- Providers Table (Updated with Credits)
 CREATE TABLE Providers (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     UserId UNIQUEIDENTIFIER NOT NULL,
@@ -39,24 +39,25 @@ CREATE TABLE Providers (
     PanNo NVARCHAR(50) NULL,
     PanFormat NVARCHAR(10) NULL,
     VerificationStatus NVARCHAR(50) DEFAULT 'Pending',
+    Credits INT DEFAULT 0 NOT NULL, -- NEW: Wallet Balance
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
 
--- Run this in your SQL Database
+-- ProviderServices Table
 CREATE TABLE ProviderServices (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     ProviderId UNIQUEIDENTIFIER NOT NULL,
     ServiceId UNIQUEIDENTIFIER NOT NULL,
-    CustomPrice DECIMAL(18,2) NULL, -- Optional: If provider charges differently than base price
+    CustomPrice DECIMAL(18,2) NULL,
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id),
     FOREIGN KEY (ServiceId) REFERENCES Services(Id),
-    CONSTRAINT UK_Provider_Service UNIQUE(ProviderId, ServiceId) -- Prevent duplicate entries
+    CONSTRAINT UK_Provider_Service UNIQUE(ProviderId, ServiceId)
 );
 
--- Addresses Table (Updated for Fix 1.B: Geolocation)
+-- Addresses Table
 CREATE TABLE Addresses (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     UserId UNIQUEIDENTIFIER NOT NULL,
@@ -68,21 +69,15 @@ CREATE TABLE Addresses (
     Pincode NVARCHAR(50),
     Latitude DECIMAL(9,6) NULL,
     Longitude DECIMAL(9,6) NULL,
-    
-    -- Computed Column: Automatically creates a Geography point from Lat/Long
-    -- PERSISTED means it is stored on disk, allowing us to Index it.
     GeoLocation AS (CASE WHEN Latitude IS NOT NULL AND Longitude IS NOT NULL 
                          THEN geography::Point(Latitude, Longitude, 4326) 
                          ELSE NULL END) PERSISTED,
-
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
 
--- Create Spatial Index on Addresses (Critical for Performance)
 CREATE SPATIAL INDEX [IX_Addresses_GeoLocation] ON Addresses(GeoLocation);
-
 
 -- Service Categories Table
 CREATE TABLE ServiceCategories (
@@ -100,7 +95,7 @@ CREATE TABLE Services (
     Description NVARCHAR(1000),
     CategoryId UNIQUEIDENTIFIER,
     BasePrice DECIMAL(18,2) DEFAULT 0,
-    Duration INT NULL, -- in minutes
+    Duration INT NULL, 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (CategoryId) REFERENCES ServiceCategories(Id)
@@ -109,12 +104,12 @@ CREATE TABLE Services (
 -- Bookings Table
 CREATE TABLE Bookings (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    ProviderId UNIQUEIDENTIFIER NULL,  -- optional: assigned later after provider accepts
+    ProviderId UNIQUEIDENTIFIER NULL,  
     CustomerId UNIQUEIDENTIFIER NOT NULL,
     ScheduledAt DATETIME2 NULL,
     AddressId UNIQUEIDENTIFIER NOT NULL,
-    Price DECIMAL(18,2) DEFAULT 0,  -- Total aggregated price of linked services
-    Status NVARCHAR(50) DEFAULT 'pending', -- pending, accepted, completed, cancelled
+    Price DECIMAL(18,2) DEFAULT 0,  
+    Status NVARCHAR(50) DEFAULT 'pending', 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id),
@@ -127,7 +122,7 @@ CREATE TABLE BookingServices (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     BookingId UNIQUEIDENTIFIER NOT NULL,
     ServiceId UNIQUEIDENTIFIER NOT NULL,
-    Price DECIMAL(18,2) NOT NULL, -- price for each individual service
+    Price DECIMAL(18,2) NOT NULL, 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (BookingId) REFERENCES Bookings(Id),
@@ -141,7 +136,7 @@ CREATE TABLE Payments (
     Amount DECIMAL(18,2) NOT NULL,
     ProviderId UNIQUEIDENTIFIER NULL,
     CustomerId UNIQUEIDENTIFIER NOT NULL,
-    Status NVARCHAR(50) NOT NULL, -- pending, success, failed
+    Status NVARCHAR(50) NOT NULL, 
     PaymentProvider NVARCHAR(200) NULL,
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (BookingId) REFERENCES Bookings(Id),
@@ -181,7 +176,7 @@ CREATE TABLE PayoutRequests (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     ProviderId UNIQUEIDENTIFIER NOT NULL,
     Amount DECIMAL(18,2) NOT NULL,
-    Status NVARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected
+    Status NVARCHAR(50) DEFAULT 'pending', 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id)
 );
@@ -192,7 +187,7 @@ CREATE TABLE ProviderEarnings (
     ProviderId UNIQUEIDENTIFIER NOT NULL,
     BookingId UNIQUEIDENTIFIER NULL,
     Amount DECIMAL(18,2) NOT NULL,
-    Type NVARCHAR(100) NOT NULL, -- earnings, payout
+    Type NVARCHAR(100) NOT NULL, 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id),
     FOREIGN KEY (BookingId) REFERENCES Bookings(Id)
@@ -207,15 +202,31 @@ CREATE TABLE AdminLogs (
     FOREIGN KEY (AdminId) REFERENCES Users(Id)
 );
 
--- Centralized Media Files Table (Note: For production, consider cloud storage instead of VARBINARY)
+-- Media Files Table
 CREATE TABLE MediaFiles (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    EntityId UNIQUEIDENTIFIER NOT NULL,    -- ID of related entity
-    EntityType NVARCHAR(50) NOT NULL,      -- Provider, Service, Category, etc.
-    MediaType NVARCHAR(50) NULL,           -- Profile, Aadhar, Pan, ServiceImage, etc.
-    ImageData VARBINARY(MAX) NOT NULL,     -- Binary image data
-    Format NVARCHAR(10) NULL,              -- png, jpg, etc.
+    EntityId UNIQUEIDENTIFIER NOT NULL,    
+    EntityType NVARCHAR(50) NOT NULL,      
+    MediaType NVARCHAR(50) NULL,           
+    ImageData VARBINARY(MAX) NOT NULL,     
+    Format NVARCHAR(10) NULL,              
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
+-- NEW: Credit Transactions Table
+CREATE TABLE CreditTransactions (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    ProviderId UNIQUEIDENTIFIER NOT NULL,
+    Amount INT NOT NULL, 
+    Type NVARCHAR(50) NOT NULL, -- 'TOPUP', 'JOB_FEE', 'REFUND'
+    
+    -- CHANGED FROM UNIQUEIDENTIFIER TO NVARCHAR TO SUPPORT STRIPE/RAZORPAY IDs
+    ReferenceId NVARCHAR(200) NULL, 
+    
+    Description NVARCHAR(200) NULL,
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (ProviderId) REFERENCES Providers(Id)
+);
 
+ALTER TABLE CreditTransactions
+ALTER COLUMN ReferenceId NVARCHAR(200);

@@ -1,11 +1,12 @@
-const { sql, poolConnect } = require('../config/db');
+const { sql } = require('../config/db');
 const base = require('./base.model');
 
+// Create profile linked to User (Updated with Credits)
 exports.create = async (userId) => {
   const query = `
-    INSERT INTO Providers (UserId, VerificationStatus)
+    INSERT INTO Providers (UserId, VerificationStatus, Credits)
     OUTPUT INSERTED.*
-    VALUES (@userId, 'Pending')
+    VALUES (@userId, 'Pending', 0)
   `;
   return base.executeOne(query, [
     { name: 'userId', type: sql.UniqueIdentifier, value: userId }
@@ -23,20 +24,37 @@ exports.findById = async (id) => {
 };
 
 exports.updateByUserId = async (userId, data) => {
-  const { bio, experienceYears } = data;
+  const { bio, experienceYears, gender, age, birthdate, aadharNo, panNo } = data;
+
   const query = `
     UPDATE Providers
-    SET Bio = @bio, ExperienceYears = @experienceYears, UpdatedAt = SYSUTCDATETIME()
+    SET 
+      Bio = @bio, 
+      ExperienceYears = @experienceYears, 
+      Gender = @gender,
+      Age = @age,
+      Birthdate = @birthdate,
+      AadharNo = @aadharNo,
+      PanNo = @panNo,
+      UpdatedAt = SYSUTCDATETIME()
     WHERE UserId = @userId;
+    
     SELECT * FROM Providers WHERE UserId = @userId
   `;
+  
   return base.executeOne(query, [
     { name: 'userId', type: sql.UniqueIdentifier, value: userId },
     { name: 'bio', type: sql.NVarChar, value: bio },
     { name: 'experienceYears', type: sql.Int, value: experienceYears },
+    { name: 'gender', type: sql.NVarChar, value: gender },
+    { name: 'age', type: sql.Int, value: age },
+    { name: 'birthdate', type: sql.Date, value: birthdate || null },
+    { name: 'aadharNo', type: sql.NVarChar, value: aadharNo },
+    { name: 'panNo', type: sql.NVarChar, value: panNo },
   ]);
 };
 
+// --- MANAGE SERVICES ---
 exports.addService = async (providerId, serviceId, customPrice) => {
   const query = `
     IF NOT EXISTS (SELECT 1 FROM ProviderServices WHERE ProviderId = @providerId AND ServiceId = @serviceId)
@@ -77,8 +95,12 @@ exports.submitVerification = async (userId, data) => {
   const { aadharNo, panNo } = data;
   const query = `
     UPDATE Providers
-    SET AadharNo = @aadharNo, PanNo = @panNo, UpdatedAt = SYSUTCDATETIME()
+    SET AadharNo = @aadharNo, 
+        PanNo = @panNo, 
+        VerificationStatus = 'Pending', 
+        UpdatedAt = SYSUTCDATETIME()
     WHERE UserId = @userId;
+    
     SELECT * FROM Providers WHERE UserId = @userId
   `;
   return base.executeOne(query, [
@@ -103,8 +125,9 @@ exports.verify = async (id, status) => {
 
 exports.listAll = async (lat, long, status) => {
   let query = `
-    SELECT P.*, Dist.Distance
+    SELECT P.*, U.Name, U.Email, U.Mobile, Dist.Distance
     FROM Providers P
+    JOIN Users U ON P.UserId = U.Id
   `;
   if (lat && long) {
     query += `
@@ -158,4 +181,70 @@ exports.findNearest = async (lat, long) => {
     { name: 'lat', type: sql.Float, value: lat },
     { name: 'long', type: sql.Float, value: long }
   ]);
+};
+
+// --- NEW CREDIT SYSTEM METHODS (These were likely missing) ---
+
+exports.getCredits = async (providerId) => {
+  const query = `SELECT Credits FROM Providers WHERE Id = @providerId`;
+  const result = await base.executeOne(query, [
+    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId }
+  ]);
+  return result ? result.Credits : 0;
+};
+
+exports.topUpCredits = async (providerId, amount, referenceId) => {
+  // Transaction: Add to history AND update main balance
+  const query = `
+    BEGIN TRANSACTION;
+      INSERT INTO CreditTransactions (ProviderId, Amount, Type, ReferenceId, Description)
+      VALUES (@providerId, @amount, 'TOPUP', @referenceId, 'Wallet Top-up');
+
+      UPDATE Providers 
+      SET Credits = Credits + @amount, UpdatedAt = SYSUTCDATETIME()
+      WHERE Id = @providerId;
+    COMMIT;
+    SELECT Credits FROM Providers WHERE Id = @providerId;
+  `;
+  return base.executeOne(query, [
+    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId },
+    { name: 'amount', type: sql.Int, value: amount },
+    { name: 'referenceId', type: sql.NVarChar, value: referenceId || null } 
+  ]);
+};
+
+exports.deductCredits = async (providerId, amount, bookingId) => {
+  // ATOMIC CHECK: Only deduct if balance >= amount
+  const query = `
+    DECLARE @CurrentCredits INT;
+    SELECT @CurrentCredits = Credits FROM Providers WHERE Id = @providerId;
+
+    IF @CurrentCredits >= @amount
+    BEGIN
+        BEGIN TRANSACTION;
+            INSERT INTO CreditTransactions (ProviderId, Amount, Type, ReferenceId, Description)
+            VALUES (@providerId, -@amount, 'JOB_FEE', @bookingId, 'Fee for accepting job');
+
+            UPDATE Providers 
+            SET Credits = Credits - @amount, UpdatedAt = SYSUTCDATETIME()
+            WHERE Id = @providerId;
+        COMMIT;
+        SELECT 1 AS Success, (Credits) AS NewBalance FROM Providers WHERE Id = @providerId;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS Success, @CurrentCredits AS NewBalance;
+    END
+  `;
+  
+  const result = await base.executeOne(query, [
+    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId },
+    { name: 'amount', type: sql.Int, value: amount },
+    { name: 'bookingId', type: sql.UniqueIdentifier, value: bookingId }
+  ]);
+
+  if (!result || result.Success === 0) {
+    throw new Error(`Insufficient credits. Balance: ${result ? result.NewBalance : 0}`);
+  }
+  return result.NewBalance;
 };

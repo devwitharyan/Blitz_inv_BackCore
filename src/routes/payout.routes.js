@@ -6,7 +6,7 @@ const authMiddleware = require('../middleware/auth.middleware');
 const validate = require('../middleware/validate.middleware');
 const payoutValidator = require('../validators/payout.validator');
 
-// POST /payouts
+// POST /api/payouts (Request Withdraw)
 router.post(
   '/',
   authMiddleware.requireAuth,
@@ -16,14 +16,14 @@ router.post(
   payoutController.createPayoutRequest
 );
 
-// GET /payouts (provider: own, admin: all)
+// GET /api/payouts (List Withdraw Requests)
 router.get(
   '/',
   authMiddleware.requireAuth,
   payoutController.listPayoutRequests
 );
 
-// PUT /payouts/:id/status (admin)
+// PUT /api/payouts/:id/status (Admin Approve/Reject)
 router.put(
   '/:id/status',
   authMiddleware.requireAuth,
@@ -33,12 +33,12 @@ router.put(
   payoutController.updatePayoutStatus
 );
 
-// GET /earnings (provider only)
+// GET /api/payouts/earnings/me (List Wallet History)
 router.get(
   '/earnings/me',
   authMiddleware.requireAuth,
   authMiddleware.requireRole('provider'),
-  payoutController.listMyEarnings
+  payoutController.listMyEarnings // Matches the function above
 );
 
 module.exports = router;

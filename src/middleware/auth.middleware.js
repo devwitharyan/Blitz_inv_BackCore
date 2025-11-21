@@ -2,7 +2,13 @@ const jwt = require('jsonwebtoken');
 const { error } = require('../utils/response');
 
 exports.requireAuth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]; 
+  // Fix #7: Safety check to prevent crash if header is malformed
+  const authHeader = req.headers.authorization;
+  let token = null;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+  }
 
   if (!token) {
     return error(res, 'Access denied. No token provided.', 401);

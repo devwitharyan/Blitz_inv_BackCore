@@ -3,15 +3,46 @@ const base = require('./base.model');
 
 exports.createRequest = async (data) => {
   const { providerId, amount } = data;
+  
+  // ATOMIC CHECK: 
+  // 1. Calculate Available Balance inside the query
+  // 2. Only perform INSERT if AvailableBalance >= RequestedAmount
   const query = `
-    INSERT INTO PayoutRequests (ProviderId, Amount)
-    OUTPUT INSERTED.*
-    VALUES (@providerId, @amount)
+    DECLARE @AvailableBalance DECIMAL(18, 2);
+    
+    SELECT @AvailableBalance = 
+        ISNULL((SELECT SUM(Amount) FROM ProviderEarnings WHERE ProviderId = @providerId), 0)
+        -
+        ISNULL((SELECT SUM(Amount) FROM PayoutRequests WHERE ProviderId = @providerId AND Status != 'rejected'), 0);
+
+    IF @AvailableBalance >= @amount
+    BEGIN
+        INSERT INTO PayoutRequests (ProviderId, Amount, Status)
+        OUTPUT INSERTED.*
+        VALUES (@providerId, @amount, 'pending');
+    END
   `;
+
+  // If the condition fails, nothing is inserted, and result will be null
   return base.executeOne(query, [
     { name: 'providerId', type: sql.UniqueIdentifier, value: providerId },
     { name: 'amount', type: sql.Decimal(18, 2), value: amount },
   ]);
+};
+
+exports.getProviderBalance = async (providerId) => {
+  const query = `
+    SELECT
+      (
+        ISNULL((SELECT SUM(Amount) FROM ProviderEarnings WHERE ProviderId = @providerId), 0)
+        -
+        ISNULL((SELECT SUM(Amount) FROM PayoutRequests WHERE ProviderId = @providerId AND Status != 'rejected'), 0)
+      ) AS AvailableBalance
+  `;
+  const result = await base.executeOne(query, [
+    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId }
+  ]);
+  return result ? result.AvailableBalance : 0;
 };
 
 exports.list = async (providerId) => {

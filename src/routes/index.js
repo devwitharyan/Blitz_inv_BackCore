@@ -27,6 +27,8 @@ router.use('/users', require('./user.routes'));
 
 router.use('/admin', require('./admin.routes'));
 router.use('/services', require('./service.routes'));
+//razorpay webhook
+router.use('/webhooks', require('./webhook.routes'));
 
 // Root health check for /api
 router.get('/', (req, res) => {
