@@ -11,6 +11,7 @@ blitz_env/
 sql/dbhelper.sql
 sql/seed.sql
 WebAPPS_Mock/
+src/config/serviceAccountKey.json
 
 admin_verify.html
 dashboard.html
