@@ -4,7 +4,6 @@ const base = require('./base.model');
 
 // ... existing create/findById methods ...
 exports.findByEmailOrMobile = async (email, mobile) => {
-    // (Keep existing code)
     try {
       const pool = await poolConnect;
       const result = await pool.request()
@@ -16,7 +15,6 @@ exports.findByEmailOrMobile = async (email, mobile) => {
 };
 
 exports.findById = async (id) => {
-    // (Keep existing code)
     try {
       const pool = await poolConnect;
       const result = await pool.request()
@@ -27,7 +25,6 @@ exports.findById = async (id) => {
 };
 
 exports.create = async (data) => {
-    // (Keep existing code)
     try {
       const pool = await poolConnect;
       await pool.request()
@@ -43,7 +40,6 @@ exports.create = async (data) => {
 };
 
 exports.countByRole = async (role, isActive = null) => {
-    // (Keep existing code)
     let query = `SELECT COUNT(Id) AS Count FROM Users WHERE Role = @role`;
     const params = [{ name: 'role', type: sql.NVarChar, value: role }];
     if (isActive !== null) {
@@ -54,7 +50,6 @@ exports.countByRole = async (role, isActive = null) => {
     return result ? result.Count : 0;
 };
 
-// Fix #9: Pagination Support
 exports.findAll = async (role, page = 1, limit = 10) => {
   try {
     const pool = await poolConnect;
@@ -82,7 +77,6 @@ exports.findAll = async (role, page = 1, limit = 10) => {
 };
 
 exports.getFullProfile = async (id) => {
-    // (Keep existing code)
     try {
         const pool = await poolConnect;
         const userResult = await pool.request().input('Id', sql.UniqueIdentifier, id).query('SELECT * FROM Users WHERE Id = @Id');
@@ -101,7 +95,6 @@ exports.getFullProfile = async (id) => {
 };
 
 exports.updateStatus = async (id, isActive) => {
-    // (Keep existing code)
     try {
       const pool = await poolConnect;
       await pool.request().input('Id', sql.UniqueIdentifier, id).input('IsActive', sql.Bit, isActive ? 1 : 0).query('UPDATE Users SET IsActive = @IsActive WHERE Id = @Id');
@@ -110,10 +103,18 @@ exports.updateStatus = async (id, isActive) => {
 };
 
 exports.updateBasicInfo = async (id, data) => {
-    // (Keep existing code)
     try {
       const pool = await poolConnect;
       await pool.request().input('Id', sql.UniqueIdentifier, id).input('Name', sql.NVarChar, data.name).input('Email', sql.NVarChar, data.email).input('Mobile', sql.NVarChar, data.mobile).query('UPDATE Users SET Name = @Name, Email = @Email, Mobile = @Mobile WHERE Id = @Id');
       return true;
     } catch (err) { throw new Error("Database query failed in updateBasicInfo"); }
+};
+
+// NEW: Update FCM Token
+exports.updateFcmToken = async (id, token) => {
+    const query = `UPDATE Users SET FcmToken = @token WHERE Id = @id`;
+    return base.executeOne(query, [
+        { name: 'id', type: sql.UniqueIdentifier, value: id },
+        { name: 'token', type: sql.NVarChar, value: token }
+    ]);
 };

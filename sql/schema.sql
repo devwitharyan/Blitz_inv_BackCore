@@ -2,6 +2,10 @@
 CREATE DATABASE HomeServiceDB;
 
 -- Users Table
+-- Create database
+CREATE DATABASE HomeServiceDB;
+
+-- Users Table
 CREATE TABLE Users (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     Name NVARCHAR(200) NOT NULL,
@@ -10,6 +14,7 @@ CREATE TABLE Users (
     PasswordHash NVARCHAR(500) NOT NULL,
     Role NVARCHAR(50) NOT NULL, -- customer | provider | admin
     IsActive BIT DEFAULT 1,
+    FcmToken NVARCHAR(MAX) NULL, -- NEW: Store Firebase Cloud Messaging Token
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL
 );
@@ -39,7 +44,7 @@ CREATE TABLE Providers (
     PanNo NVARCHAR(50) NULL,
     PanFormat NVARCHAR(10) NULL,
     VerificationStatus NVARCHAR(50) DEFAULT 'Pending',
-    Credits INT DEFAULT 0 NOT NULL, -- NEW: Wallet Balance
+    Credits INT DEFAULT 0 NOT NULL, 
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (UserId) REFERENCES Users(Id)
@@ -213,16 +218,13 @@ CREATE TABLE MediaFiles (
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
--- NEW: Credit Transactions Table
+-- Credit Transactions Table
 CREATE TABLE CreditTransactions (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     ProviderId UNIQUEIDENTIFIER NOT NULL,
     Amount INT NOT NULL, 
     Type NVARCHAR(50) NOT NULL, -- 'TOPUP', 'JOB_FEE', 'REFUND'
-    
-    -- CHANGED FROM UNIQUEIDENTIFIER TO NVARCHAR TO SUPPORT STRIPE/RAZORPAY IDs
     ReferenceId NVARCHAR(200) NULL, 
-    
     Description NVARCHAR(200) NULL,
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id)
@@ -230,3 +232,6 @@ CREATE TABLE CreditTransactions (
 
 ALTER TABLE CreditTransactions
 ALTER COLUMN ReferenceId NVARCHAR(200);
+
+ALTER TABLE Users
+ADD FcmToken NVARCHAR(MAX) NULL;

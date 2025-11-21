@@ -114,12 +114,10 @@ exports.login = async (req, res) => {
   }
 };
 
-// --- UPDATED TO FETCH FULL PROFILE ---
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Use getFullProfile to get Provider details (VerificationStatus)
     const fullData = await userModel.getFullProfile(userId); 
 
     if (!fullData || !fullData.user) {
@@ -129,13 +127,11 @@ exports.getProfile = async (req, res) => {
       });
     }
 
-    // Combine User and Profile data into one object for the frontend
     const responseData = {
       ...fullData.user,
-      profile: fullData.profile // This contains VerificationStatus
+      profile: fullData.profile
     };
     
-    // Remove sensitive data
     delete responseData.PasswordHash;
 
     return res.json({
@@ -152,4 +148,17 @@ exports.getProfile = async (req, res) => {
       error: err.message,
     });
   }
+};
+
+// NEW: Update FCM Token
+exports.updateFcmToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+        
+        await userModel.updateFcmToken(req.user.id, token);
+        return res.json({ success: true, message: 'FCM Token updated' });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 };

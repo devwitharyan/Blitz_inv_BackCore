@@ -4,7 +4,7 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller'); 
 const authValidator = require('../validators/auth.validator');
 const validate = require('../middleware/validate.middleware');
-const authMiddleware = require('../middleware/auth.middleware'); // Import auth middleware
+const authMiddleware = require('../middleware/auth.middleware');
 
 console.log('🔥 auth.routes.js loaded');
 
@@ -27,8 +27,15 @@ router.post(
 // GET /auth/profile
 router.get(
   '/profile',
-  authMiddleware.requireAuth, // Protect the route
-  authController.getProfile // Add new controller function
+  authMiddleware.requireAuth, 
+  authController.getProfile 
+);
+
+// NEW: PUT /auth/fcm-token
+router.put(
+  '/fcm-token',
+  authMiddleware.requireAuth,
+  authController.updateFcmToken
 );
 
 module.exports = router;

@@ -108,7 +108,7 @@ exports.hasPreviousRelation = async (customerId, providerId) => {
 };
 
 exports.findNearbyPending = async (lat, long, radiusKm = 5) => {
-  // UPDATED: REMOVED U.Mobile and U.Email for privacy on pending jobs
+  // Privacy: Does NOT return Phone/Email for pending jobs
   const query = `
     SELECT B.*, 
            A.City, A.Line1, A.Latitude, A.Longitude,
@@ -146,6 +146,7 @@ exports.findNearbyPending = async (lat, long, radiusKm = 5) => {
 };
 
 exports.claim = async (bookingId, providerId) => {
+  // Atomic Update: Only claims if ProviderId IS NULL
   const query = `
     UPDATE Bookings
     SET ProviderId = @providerId, Status = 'accepted', UpdatedAt = SYSUTCDATETIME()
@@ -164,7 +165,7 @@ exports.listForUser = async (userId, role) => {
   
   const condition = role === 'provider' ? `WHERE ProviderId = @userId` : `WHERE CustomerId = @userId`;
 
-  // KEEP Contact details here for "My Jobs"
+  // Returns full details (including Phone/Email) for "My Jobs"
   const query = `
     SELECT B.*, 
            U.Name AS CustomerName, 

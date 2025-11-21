@@ -123,9 +123,10 @@ exports.verify = async (id, status) => {
   ]);
 };
 
+// UPDATED: Include FcmToken in the select list
 exports.listAll = async (lat, long, status) => {
   let query = `
-    SELECT P.*, U.Name, U.Email, U.Mobile, Dist.Distance
+    SELECT P.*, U.Name, U.Email, U.Mobile, U.FcmToken, Dist.Distance
     FROM Providers P
     JOIN Users U ON P.UserId = U.Id
   `;
@@ -183,8 +184,7 @@ exports.findNearest = async (lat, long) => {
   ]);
 };
 
-// --- NEW CREDIT SYSTEM METHODS (These were likely missing) ---
-
+// --- NEW CREDIT SYSTEM METHODS ---
 exports.getCredits = async (providerId) => {
   const query = `SELECT Credits FROM Providers WHERE Id = @providerId`;
   const result = await base.executeOne(query, [
@@ -194,7 +194,6 @@ exports.getCredits = async (providerId) => {
 };
 
 exports.topUpCredits = async (providerId, amount, referenceId) => {
-  // Transaction: Add to history AND update main balance
   const query = `
     BEGIN TRANSACTION;
       INSERT INTO CreditTransactions (ProviderId, Amount, Type, ReferenceId, Description)
@@ -214,7 +213,6 @@ exports.topUpCredits = async (providerId, amount, referenceId) => {
 };
 
 exports.deductCredits = async (providerId, amount, bookingId) => {
-  // ATOMIC CHECK: Only deduct if balance >= amount
   const query = `
     DECLARE @CurrentCredits INT;
     SELECT @CurrentCredits = Credits FROM Providers WHERE Id = @providerId;
