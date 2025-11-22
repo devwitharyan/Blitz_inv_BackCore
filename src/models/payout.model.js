@@ -4,9 +4,6 @@ const base = require('./base.model');
 exports.createRequest = async (data) => {
   const { providerId, amount } = data;
   
-  // ATOMIC CHECK: 
-  // 1. Calculate Available Balance inside the query
-  // 2. Only perform INSERT if AvailableBalance >= RequestedAmount
   const query = `
     DECLARE @AvailableBalance DECIMAL(18, 2);
     
@@ -23,28 +20,50 @@ exports.createRequest = async (data) => {
     END
   `;
 
-  // If the condition fails, nothing is inserted, and result will be null
   return base.executeOne(query, [
     { name: 'providerId', type: sql.UniqueIdentifier, value: providerId },
     { name: 'amount', type: sql.Decimal(18, 2), value: amount },
   ]);
 };
 
-exports.getProviderBalance = async (providerId) => {
-  const query = `
+// --- NEW: Unified Wallet Data Fetcher ---
+exports.getWalletDetails = async (providerId) => {
+  // 1. Calculate Aggregates
+  const summaryQuery = `
     SELECT
-      (
-        ISNULL((SELECT SUM(Amount) FROM ProviderEarnings WHERE ProviderId = @providerId), 0)
-        -
-        ISNULL((SELECT SUM(Amount) FROM PayoutRequests WHERE ProviderId = @providerId AND Status != 'rejected'), 0)
-      ) AS AvailableBalance
+        ISNULL((SELECT SUM(Amount) FROM ProviderEarnings WHERE ProviderId = @providerId), 0) AS TotalEarned,
+        ISNULL((SELECT SUM(Amount) FROM PayoutRequests WHERE ProviderId = @providerId AND Status != 'rejected'), 0) AS TotalWithdrawn
   `;
-  const result = await base.executeOne(query, [
-    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId }
-  ]);
-  return result ? result.AvailableBalance : 0;
+  const summary = await base.executeOne(summaryQuery, [{ name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);
+
+  const balance = summary.TotalEarned - summary.TotalWithdrawn;
+
+  // 2. Fetch Unified History (Earnings + Withdrawals)
+  const historyQuery = `
+    SELECT Id, Amount, 'Earning' AS Type, 'Job Payment' AS Description, CreatedAt, 'completed' AS Status
+    FROM ProviderEarnings
+    WHERE ProviderId = @providerId
+
+    UNION ALL
+
+    SELECT Id, Amount, 'Withdrawal' AS Type, 'Payout Request' AS Description, CreatedAt, Status
+    FROM PayoutRequests
+    WHERE ProviderId = @providerId
+
+    ORDER BY CreatedAt DESC
+  `;
+  
+  const history = await base.execute(historyQuery, [{ name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);
+
+  return {
+    balance: balance,
+    totalEarned: summary.TotalEarned,
+    totalWithdrawn: summary.TotalWithdrawn,
+    history: history
+  };
 };
 
+// ... (Keep other existing methods like list, updateStatus if needed for admin) ...
 exports.list = async (providerId) => {
   const query = providerId
     ? `SELECT * FROM PayoutRequests WHERE ProviderId = @providerId ORDER BY CreatedAt DESC`
@@ -63,15 +82,6 @@ exports.updateStatus = async (id, status) => {
   return base.executeOne(query, [
     { name: 'id', type: sql.UniqueIdentifier, value: id },
     { name: 'status', type: sql.NVarChar, value: status },
-  ]);
-};
-
-exports.listEarningsByProvider = async (providerId) => {
-  const query = `
-    SELECT * FROM ProviderEarnings WHERE ProviderId = @providerId ORDER BY CreatedAt DESC
-  `;
-  return base.execute(query, [
-    { name: 'providerId', type: sql.UniqueIdentifier, value: providerId },
   ]);
 };
 

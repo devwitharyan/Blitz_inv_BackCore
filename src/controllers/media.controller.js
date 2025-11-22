@@ -37,30 +37,24 @@ exports.getMediaById = async (req, res) => {
   try {
     const file = await mediaModel.findById(req.params.id);
     if (!file) {
-      console.log(`[MEDIA] 404: File ID ${req.params.id} not found.`);
       return error(res, 'Not found', 404);
     }
 
-    // --- CRITICAL NULL/EMPTY CHECK ---
     if (!file.ImageData || file.ImageData.length === 0) {
-        console.error(`[MEDIA] 500: ImageData is null/empty for ID ${req.params.id}.`);
-        return error(res, 'Image data is missing or corrupted.', 500); 
+        return error(res, 'Image data is missing.', 500); 
     }
-    console.log(`[MEDIA] Serving ID ${req.params.id}. Size: ${file.ImageData.length} bytes.`);
-    // ----------------------------------------
     
-    // --- FIX 1: Headers for Reliability and Security ---
+    // Headers
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
     res.setHeader('Content-Type', `image/${file.Format || 'jpeg'}`);
-    
-    // --- FIX 2: Explicit Content-Length and res.end() for guaranteed binary stream ---
     res.setHeader('Content-Length', file.ImageData.length);
-    res.end(file.ImageData, 'binary'); // Send the raw buffer and close the stream
+    
+    // FIX: Send buffer directly without 'binary' encoding flag
+    res.end(file.ImageData); 
     
   } catch (err) {
     console.error("Error serving media:", err);
-    // Note: If headers were already sent, this might crash the server, but it's the right final logic
-    return error(res, err.message);
+    if (!res.headersSent) return error(res, err.message);
   }
 };

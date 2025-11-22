@@ -2,7 +2,6 @@ const sql = require('mssql');
 const { poolConnect } = require('../config/db');
 const base = require('./base.model');
 
-// ... existing create/findById methods ...
 exports.findByEmailOrMobile = async (email, mobile) => {
     try {
       const pool = await poolConnect;
@@ -82,9 +81,20 @@ exports.getFullProfile = async (id) => {
         const userResult = await pool.request().input('Id', sql.UniqueIdentifier, id).query('SELECT * FROM Users WHERE Id = @Id');
         const user = userResult.recordset[0];
         if (!user) return null;
+        
         let profile = null;
         if (user.Role.toLowerCase() === 'provider') { 
-          const provResult = await pool.request().input('UserId', sql.UniqueIdentifier, id).query('SELECT * FROM Providers WHERE UserId = @UserId');
+          const provQuery = `
+            SELECT P.*,
+                   (
+                     SELECT ISNULL(AVG(CAST(Rating AS FLOAT)), 0) 
+                     FROM Reviews 
+                     WHERE ProviderId = P.Id
+                   ) AS AverageRating
+            FROM Providers P 
+            WHERE UserId = @UserId
+          `;
+          const provResult = await pool.request().input('UserId', sql.UniqueIdentifier, id).query(provQuery);
           profile = provResult.recordset[0];
         } else if (user.Role.toLowerCase() === 'customer') {
           const custResult = await pool.request().input('UserId', sql.UniqueIdentifier, id).query('SELECT * FROM Customers WHERE UserId = @UserId');
@@ -110,11 +120,24 @@ exports.updateBasicInfo = async (id, data) => {
     } catch (err) { throw new Error("Database query failed in updateBasicInfo"); }
 };
 
-// NEW: Update FCM Token
 exports.updateFcmToken = async (id, token) => {
     const query = `UPDATE Users SET FcmToken = @token WHERE Id = @id`;
     return base.executeOne(query, [
         { name: 'id', type: sql.UniqueIdentifier, value: id },
         { name: 'token', type: sql.NVarChar, value: token }
     ]);
+};
+
+// --- NEW: Update Password ---
+exports.updatePassword = async (id, passwordHash) => {
+    try {
+      const pool = await poolConnect;
+      await pool.request()
+        .input('Id', sql.UniqueIdentifier, id)
+        .input('PasswordHash', sql.NVarChar, passwordHash)
+        .query('UPDATE Users SET PasswordHash = @PasswordHash, UpdatedAt = SYSUTCDATETIME() WHERE Id = @Id');
+      return true;
+    } catch (err) { 
+        throw new Error("Database query failed in updatePassword"); 
+    }
 };

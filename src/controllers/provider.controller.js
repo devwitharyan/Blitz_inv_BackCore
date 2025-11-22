@@ -12,8 +12,7 @@ const razorpayInstance = new Razorpay({
   key_secret: razorpay.keySecret,
 });
 
-// ... [Keep getMyProfile, updateMyProfile, submitVerification, etc.] ...
-
+// Get My Profile
 exports.getMyProfile = async (req, res) => {
   try {
     const provider = await providerModel.findByUserId(req.user.id);
@@ -27,6 +26,7 @@ exports.getMyProfile = async (req, res) => {
   }
 };
 
+// Update Profile
 exports.updateMyProfile = async (req, res) => {
   try {
     const result = await providerModel.updateByUserId(req.user.id, req.body);
@@ -36,6 +36,7 @@ exports.updateMyProfile = async (req, res) => {
   }
 };
 
+// Submit Verification (KYC)
 exports.submitVerification = async (req, res) => {
   try {
     const result = await providerModel.submitVerification(req.user.id, req.body);
@@ -45,7 +46,7 @@ exports.submitVerification = async (req, res) => {
   }
 };
 
-// ... [Keep Service Management functions: addMyService, removeMyService, getMyServices] ...
+// Add Service
 exports.addMyService = async (req, res) => {
     try {
         const { serviceId, customPrice } = req.body;
@@ -59,6 +60,7 @@ exports.addMyService = async (req, res) => {
     }
 };
 
+// Remove Service
 exports.removeMyService = async (req, res) => {
     try {
         const { serviceId } = req.params;
@@ -70,6 +72,7 @@ exports.removeMyService = async (req, res) => {
     }
 };
 
+// Get My Services
 exports.getMyServices = async (req, res) => {
     try {
         const provider = await providerModel.findByUserId(req.user.id);
@@ -80,7 +83,7 @@ exports.getMyServices = async (req, res) => {
     }
 };
 
-// ... [Keep Public/Admin functions: listProviders, verifyProvider, getProviderById, listMediaByUserId] ...
+// List Providers (Public/Admin)
 exports.listProviders = async (req, res) => {
   try {
     const { lat, long, status } = req.query;
@@ -91,6 +94,7 @@ exports.listProviders = async (req, res) => {
   }
 };
 
+// Verify Provider (Admin)
 exports.verifyProvider = async (req, res) => {
   try {
     const { id } = req.params;
@@ -102,6 +106,7 @@ exports.verifyProvider = async (req, res) => {
   }
 };
 
+// Get Provider by ID
 exports.getProviderById = async (req, res) => {
   try {
     const provider = await providerModel.findById(req.params.id);
@@ -111,6 +116,7 @@ exports.getProviderById = async (req, res) => {
   }
 };
 
+// List Media
 exports.listMediaByUserId = async (req, res) => {
   try {
     const userId = req.params.userId; 
@@ -127,6 +133,7 @@ exports.listMediaByUserId = async (req, res) => {
   }
 };
 
+// Get Credits
 exports.getMyCredits = async (req, res) => {
   try {
     const provider = await providerModel.findByUserId(req.user.id);
@@ -139,13 +146,12 @@ exports.getMyCredits = async (req, res) => {
   }
 };
 
-
 // --- RAZORPAY INTEGRATION ---
 
-// 1. Create Order
+// Create Top-up Order
 exports.createTopUpOrder = async (req, res) => {
   try {
-    const { amount } = req.body; // Amount in Credits (1 Credit = 1 INR, typically)
+    const { amount } = req.body;
     
     if (!amount || amount < 1) {
       return error(res, 'Invalid amount', 400);
@@ -165,7 +171,7 @@ exports.createTopUpOrder = async (req, res) => {
     return success(res, {
       orderId: order.id,
       amount: order.amount,
-      keyId: razorpay.keyId // Send key to frontend to avoid hardcoding
+      keyId: razorpay.keyId 
     }, 'Order created');
 
   } catch (err) {
@@ -174,7 +180,7 @@ exports.createTopUpOrder = async (req, res) => {
   }
 };
 
-// 2. Verify Payment & Top Up Wallet
+// Verify Top-up
 exports.verifyTopUp = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
@@ -190,12 +196,8 @@ exports.verifyTopUp = async (req, res) => {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      // Payment is legit -> Add Credits
-      // Assuming 1 INR = 1 Credit. If `amount` passed from front-end is credits:
       const creditsToAdd = parseInt(amount); 
-
       const result = await providerModel.topUpCredits(provider.Id, creditsToAdd, razorpay_payment_id);
-      
       return success(res, { credits: result.Credits }, 'Payment Verified & Wallet Topped Up!');
     } else {
       return error(res, 'Invalid Payment Signature', 400);

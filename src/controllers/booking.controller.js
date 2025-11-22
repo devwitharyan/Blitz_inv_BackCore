@@ -26,7 +26,7 @@ exports.createBooking = async (req, res) => {
 
     const booking = await bookingModel.create(data);
     
-    // SOCKET: Broadcast New Job
+    // Notifications
     const io = req.app.get('io'); 
     if (io) {
       io.to('providers').emit('new_job_available', { 
@@ -35,7 +35,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // FCM Push Notification
     if (!data.providerId && admin) {
         try {
             const nearbyProviders = await providerModel.listAll(address.Latitude, address.Longitude, 'Verified');
@@ -54,16 +53,29 @@ exports.createBooking = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-// 2. List Available Jobs
+// 2. List Available Jobs (FINAL VISIBILITY LOGIC)
 exports.listAvailableJobs = async (req, res) => {
   try {
     const provider = await providerModel.findByUserId(req.user.id);
     if (!provider) return error(res, 'Profile not found', 404);
+    
     const addressList = await addressModel.listByUserId(req.user.id);
-    if (!addressList[0] || !addressList[0].Latitude) return error(res, 'Please set work location.', 400);
-    const jobs = await bookingModel.findNearbyPending(addressList[0].Latitude, addressList[0].Longitude, 5);
+    const workAddress = addressList[0]; 
+
+    if (!workAddress || !workAddress.Latitude) {
+        return error(res, 'Please set your work location to see jobs.', 400);
+    }
+
+    const lat = workAddress?.Latitude || 0;
+    const long = workAddress?.Longitude || 0;
+
+    const jobs = await bookingModel.findNearbyPending(lat, long, 5, provider.Id);
+    
     return success(res, jobs);
-  } catch (err) { return error(res, err.message); }
+  } catch (err) {
+    console.error("Error listing jobs:", err);
+    return error(res, err.message);
+  }
 };
 
 // 3. Accept Job
@@ -74,7 +86,6 @@ exports.acceptJob = async (req, res) => {
     if (!provider) return error(res, 'Profile not found', 404);
 
     const JOB_COST = 10; 
-    
     try {
         await providerModel.deductCredits(provider.Id, JOB_COST, id);
     } catch (creditErr) {
@@ -83,29 +94,23 @@ exports.acceptJob = async (req, res) => {
 
     const result = await bookingModel.claim(id, provider.Id);
     
-    // RACE CONDITION CHECK: 
-    // If result.ProviderId is NOT current provider, someone else took it.
     if (!result || result.ProviderId !== provider.Id) {
-        await providerModel.topUpCredits(provider.Id, JOB_COST, id); // Refund
+        await providerModel.topUpCredits(provider.Id, JOB_COST, id);
         return error(res, 'Too late! This job was just taken by another provider.', 409);
     }
 
-    // SUCCESS: Broadcast 'job_taken' so other apps remove it
     const io = req.app.get('io');
     if (io) {
         io.to('providers').emit('job_taken', { 
             bookingId: id 
         });
-        console.log(`🔒 Job ${id} taken. Broadcast sent.`);
     }
 
     return success(res, result, `Job accepted! ${JOB_COST} Credits deducted.`);
-  } catch (err) {
-    return error(res, err.message);
-  }
+  } catch (err) { return error(res, err.message); }
 };
 
-// ... [listMyBookings, getBookingById remain the same] ...
+// 4. List My Bookings
 exports.listMyBookings = async (req, res) => {
   try {
     let entityId = req.user.id;
@@ -119,6 +124,7 @@ exports.listMyBookings = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
+// 5. Get Single Booking
 exports.getBookingById = async (req, res) => {
   try {
     const booking = await bookingModel.findById(req.params.id);
@@ -131,20 +137,13 @@ exports.updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-
     const result = await bookingModel.updateStatus(id, status);
 
-    // Handle Cancellation
     if (status === 'cancelled') {
-        // SOCKET: Notify providers to remove from list
         const io = req.app.get('io');
         if (io) {
-            io.to('providers').emit('booking_cancelled', { 
-                bookingId: id,
-                message: "Booking cancelled by customer."
-            });
+            io.to('providers').emit('booking_cancelled', { bookingId: id, message: "Booking cancelled by customer." });
         }
-
         const booking = await bookingModel.findById(id);
         if (booking.ProviderId && req.body.cancelledBy === 'customer') {
             await providerModel.topUpCredits(booking.ProviderId, 10, `Refund: Booking ${id}`);
@@ -158,11 +157,11 @@ exports.updateBookingStatus = async (req, res) => {
             await paymentModel.create({ bookingId: id, customerId: result.CustomerId, providerId: result.ProviderId, amount: result.Price, paymentProvider: 'Cash/Offline' });
         }
     }
-
     return success(res, result, 'Status updated');
   } catch (err) { return error(res, err.message); }
 };
 
+// 7. Assign Provider
 exports.assignProvider = async (req, res) => {
   try {
     let inputId = req.body.providerId; 
@@ -178,6 +177,7 @@ exports.assignProvider = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
+// 8. Get Services Linked to Booking
 exports.getBookingServices = async (req, res) => {
   try {
     const services = await bookingModel.getServicesByBookingId(req.params.id);
@@ -186,6 +186,7 @@ exports.getBookingServices = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
+// 9. Get Recent Clients
 exports.getRecentClients = async (req, res) => {
   try {
     const provider = await providerModel.findByUserId(req.user.id);

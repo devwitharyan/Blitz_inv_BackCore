@@ -1,7 +1,7 @@
 const { sql } = require('../config/db');
 const base = require('./base.model');
 
-// Create profile linked to User (Updated with Credits)
+// Create profile linked to User
 exports.create = async (userId) => {
   const query = `
     INSERT INTO Providers (UserId, VerificationStatus, Credits)
@@ -13,8 +13,18 @@ exports.create = async (userId) => {
   ]);
 };
 
+// Find by User ID (with Rating)
 exports.findByUserId = async (userId) => {
-  const query = `SELECT * FROM Providers WHERE UserId = @userId`;
+  const query = `
+    SELECT P.*,
+           (
+             SELECT ISNULL(AVG(CAST(Rating AS FLOAT)), 0) 
+             FROM Reviews 
+             WHERE ProviderId = P.Id
+           ) AS AverageRating
+    FROM Providers P 
+    WHERE UserId = @userId
+  `;
   return base.executeOne(query, [{ name: 'userId', type: sql.UniqueIdentifier, value: userId }]);
 };
 
@@ -26,32 +36,53 @@ exports.findById = async (id) => {
 exports.updateByUserId = async (userId, data) => {
   const { bio, experienceYears, gender, age, birthdate, aadharNo, panNo } = data;
 
+  const params = [{ name: 'userId', type: sql.UniqueIdentifier, value: userId }];
+  const setClauses = [];
+
+  if (bio !== undefined) {
+    setClauses.push('Bio = @bio');
+    params.push({ name: 'bio', type: sql.NVarChar, value: bio });
+  }
+  if (experienceYears !== undefined) {
+    setClauses.push('ExperienceYears = @experienceYears');
+    params.push({ name: 'experienceYears', type: sql.Int, value: experienceYears });
+  }
+  if (gender !== undefined) {
+    setClauses.push('Gender = @gender');
+    params.push({ name: 'gender', type: sql.NVarChar, value: gender });
+  }
+  if (age !== undefined) {
+    setClauses.push('Age = @age');
+    params.push({ name: 'age', type: sql.Int, value: age });
+  }
+  if (birthdate !== undefined) {
+    setClauses.push('Birthdate = @birthdate');
+    params.push({ name: 'birthdate', type: sql.Date, value: birthdate || null });
+  }
+  if (aadharNo !== undefined) {
+    setClauses.push('AadharNo = @aadharNo');
+    params.push({ name: 'aadharNo', type: sql.NVarChar, value: aadharNo });
+  }
+  if (panNo !== undefined) {
+    setClauses.push('PanNo = @panNo');
+    params.push({ name: 'panNo', type: sql.NVarChar, value: panNo });
+  }
+
+  setClauses.push('UpdatedAt = SYSUTCDATETIME()');
+
+  if (setClauses.length === 1) { 
+    return this.findByUserId(userId); 
+  }
+
   const query = `
     UPDATE Providers
-    SET 
-      Bio = @bio, 
-      ExperienceYears = @experienceYears, 
-      Gender = @gender,
-      Age = @age,
-      Birthdate = @birthdate,
-      AadharNo = @aadharNo,
-      PanNo = @panNo,
-      UpdatedAt = SYSUTCDATETIME()
+    SET ${setClauses.join(', ')}
     WHERE UserId = @userId;
     
     SELECT * FROM Providers WHERE UserId = @userId
   `;
   
-  return base.executeOne(query, [
-    { name: 'userId', type: sql.UniqueIdentifier, value: userId },
-    { name: 'bio', type: sql.NVarChar, value: bio },
-    { name: 'experienceYears', type: sql.Int, value: experienceYears },
-    { name: 'gender', type: sql.NVarChar, value: gender },
-    { name: 'age', type: sql.Int, value: age },
-    { name: 'birthdate', type: sql.Date, value: birthdate || null },
-    { name: 'aadharNo', type: sql.NVarChar, value: aadharNo },
-    { name: 'panNo', type: sql.NVarChar, value: panNo },
-  ]);
+  return base.executeOne(query, params);
 };
 
 // --- MANAGE SERVICES ---
@@ -92,11 +123,13 @@ exports.getMyServices = async (providerId) => {
 };
 
 exports.submitVerification = async (userId, data) => {
-  const { aadharNo, panNo } = data;
+  const { aadharNo, panNo, bankAccountNo, ifscCode } = data;
   const query = `
     UPDATE Providers
     SET AadharNo = @aadharNo, 
         PanNo = @panNo, 
+        BankAccountNo = @bankAccountNo,
+        IfscCode = @ifscCode,
         VerificationStatus = 'Pending', 
         UpdatedAt = SYSUTCDATETIME()
     WHERE UserId = @userId;
@@ -107,6 +140,8 @@ exports.submitVerification = async (userId, data) => {
     { name: 'userId', type: sql.UniqueIdentifier, value: userId },
     { name: 'aadharNo', type: sql.NVarChar, value: aadharNo },
     { name: 'panNo', type: sql.NVarChar, value: panNo },
+    { name: 'bankAccountNo', type: sql.NVarChar, value: bankAccountNo },
+    { name: 'ifscCode', type: sql.NVarChar, value: ifscCode },
   ]);
 };
 
@@ -123,7 +158,6 @@ exports.verify = async (id, status) => {
   ]);
 };
 
-// UPDATED: Include FcmToken in the select list
 exports.listAll = async (lat, long, status) => {
   let query = `
     SELECT P.*, U.Name, U.Email, U.Mobile, U.FcmToken, Dist.Distance
@@ -184,7 +218,6 @@ exports.findNearest = async (lat, long) => {
   ]);
 };
 
-// --- NEW CREDIT SYSTEM METHODS ---
 exports.getCredits = async (providerId) => {
   const query = `SELECT Credits FROM Providers WHERE Id = @providerId`;
   const result = await base.executeOne(query, [

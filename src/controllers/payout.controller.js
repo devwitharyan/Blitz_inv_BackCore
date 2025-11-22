@@ -5,14 +5,15 @@ const { success, error } = require('../utils/response');
 exports.createPayoutRequest = async (req, res) => {
   try {
     const userId = req.user.id; 
-
     const provider = await providerModel.findByUserId(userId);
-    if (!provider) {
-      return error(res, 'Provider profile not found', 404);
-    }
+    if (!provider) return error(res, 'Provider profile not found', 404);
 
     const data = { ...req.body, providerId: provider.Id };
     const result = await payoutModel.createRequest(data);
+    
+    if (!result) {
+        return error(res, 'Insufficient balance for this withdrawal request.', 400);
+    }
     
     return success(res, result, 'Payout requested', 201);
   } catch (err) {
@@ -22,16 +23,8 @@ exports.createPayoutRequest = async (req, res) => {
 
 exports.listPayoutRequests = async (req, res) => {
   try {
-    let providerId = null;
-    if (req.user.role !== 'admin') {
-      const provider = await providerModel.findByUserId(req.user.id); 
-      if (!provider) {
-        return error(res, 'Provider profile not found', 404);
-      }
-      providerId = provider.Id;
-    }
-    
-    const results = await payoutModel.list(providerId);
+    // Admin function
+    const results = await payoutModel.list();
     return success(res, results);
   } catch (err) {
     return error(res, err.message);
@@ -47,31 +40,16 @@ exports.updatePayoutStatus = async (req, res) => {
   }
 };
 
-// --- THIS IS THE FUNCTION FETCHING YOUR EARNINGS ---
+// --- UPDATED: Returns Full Wallet Summary ---
 exports.listMyEarnings = async (req, res) => {
   try {
-    console.log(`🔍 Fetching Earnings for User: ${req.user.id}`);
-
-    // 1. Find Provider Profile
     const provider = await providerModel.findByUserId(req.user.id); 
-    if (!provider) {
-      console.log("❌ Provider Profile NOT FOUND");
-      return error(res, 'Provider profile not found', 404);
-    }
+    if (!provider) return error(res, 'Provider profile not found', 404);
     
-    console.log(`✅ Found Provider ID: ${provider.Id}`);
-
-    // 2. Fetch Earnings from DB
-    const earnings = await payoutModel.listEarningsByProvider(provider.Id);
+    const walletData = await payoutModel.getWalletDetails(provider.Id);
     
-    console.log(`📊 Earnings Found: ${earnings.length} records`);
-    if (earnings.length > 0) {
-      console.log(`💰 Sample Amount: ${earnings[0].Amount}`);
-    }
-
-    return success(res, earnings);
+    return success(res, walletData);
   } catch (err) {
-    console.error("❌ Error in listMyEarnings:", err);
     return error(res, err.message);
   }
 };

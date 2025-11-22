@@ -2,10 +2,6 @@
 CREATE DATABASE HomeServiceDB;
 
 -- Users Table
--- Create database
-CREATE DATABASE HomeServiceDB;
-
--- Users Table
 CREATE TABLE Users (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     Name NVARCHAR(200) NOT NULL,
@@ -14,7 +10,7 @@ CREATE TABLE Users (
     PasswordHash NVARCHAR(500) NOT NULL,
     Role NVARCHAR(50) NOT NULL, -- customer | provider | admin
     IsActive BIT DEFAULT 1,
-    FcmToken NVARCHAR(MAX) NULL, -- NEW: Store Firebase Cloud Messaging Token
+    FcmToken NVARCHAR(MAX) NULL, -- Store Firebase Cloud Messaging Token
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL
 );
@@ -30,7 +26,7 @@ CREATE TABLE Customers (
     FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
 
--- Providers Table (Updated with Credits)
+-- Providers Table (Updated with Bank Details)
 CREATE TABLE Providers (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
     UserId UNIQUEIDENTIFIER NOT NULL,
@@ -39,12 +35,19 @@ CREATE TABLE Providers (
     Gender NVARCHAR(50) NULL,
     Age INT NULL,
     Birthdate DATE NULL,
+    
+    -- KYC Documents
     AadharNo NVARCHAR(50) NULL,
     AadharFormat NVARCHAR(10) NULL,
     PanNo NVARCHAR(50) NULL,
     PanFormat NVARCHAR(10) NULL,
+    
+    -- NEW: Bank Details for Payouts
+    BankAccountNo NVARCHAR(50) NULL,
+    IfscCode NVARCHAR(20) NULL,
+
     VerificationStatus NVARCHAR(50) DEFAULT 'Pending',
-    Credits INT DEFAULT 0 NOT NULL, 
+    Credits INT DEFAULT 0 NOT NULL, -- Wallet Balance
     CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     FOREIGN KEY (UserId) REFERENCES Users(Id)
@@ -60,6 +63,19 @@ CREATE TABLE ProviderServices (
     FOREIGN KEY (ProviderId) REFERENCES Providers(Id),
     FOREIGN KEY (ServiceId) REFERENCES Services(Id),
     CONSTRAINT UK_Provider_Service UNIQUE(ProviderId, ServiceId)
+);
+
+CREATE TABLE ProviderSchedules (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    ProviderId UNIQUEIDENTIFIER NOT NULL,
+    DayOfWeek NVARCHAR(20) NOT NULL, -- 'Monday', 'Tuesday', etc.
+    StartTime NVARCHAR(10) NULL, -- '09:00 AM'
+    EndTime NVARCHAR(10) NULL,   -- '05:00 PM'
+    IsActive BIT DEFAULT 1,      -- 1 = Working, 0 = Off
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    UpdatedAt DATETIME2 NULL,
+    FOREIGN KEY (ProviderId) REFERENCES Providers(Id),
+    CONSTRAINT UK_Provider_Day UNIQUE(ProviderId, DayOfWeek) -- One entry per day per provider
 );
 
 -- Addresses Table
@@ -235,3 +251,7 @@ ALTER COLUMN ReferenceId NVARCHAR(200);
 
 ALTER TABLE Users
 ADD FcmToken NVARCHAR(MAX) NULL;
+
+ALTER TABLE Providers
+ADD BankAccountNo NVARCHAR(50) NULL,
+    IfscCode NVARCHAR(20) NULL;

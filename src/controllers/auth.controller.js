@@ -3,28 +3,22 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const userModel = require('../models/user.model');
 const { jwtSecret } = require('../config/env');
-
 const providerModel = require('../models/provider.model');
 const customerModel = require('../models/customer.model');
+const { success, error } = require('../utils/response');
 
 exports.register = async (req, res) => {
   try {
     const { name, email, mobile, password, role } = req.body;
 
     if (!name || !email || !password || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email, password, and role are required',
-      });
+      return error(res, 'Name, email, password, and role are required', 400);
     }
 
     const existingUser = await userModel.findByEmailOrMobile(email, mobile);
 
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: 'A user with this email or mobile already exists',
-      });
+      return error(res, 'A user with this email or mobile already exists', 409);
     }
 
     const id = uuidv4();
@@ -47,19 +41,11 @@ exports.register = async (req, res) => {
 
     const token = jwt.sign({ id, role }, jwtSecret, { expiresIn: '7d' });
 
-    return res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      data: { user: newUser, token },
-    });
+    return success(res, { user: newUser, token }, 'User registered successfully', 201);
 
   } catch (err) {
     console.error("Registration error:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Registration failed',
-      error: err.message,
-    });
+    return error(res, err.message);
   }
 };
 
@@ -68,28 +54,24 @@ exports.login = async (req, res) => {
     const { emailOrMobile, password } = req.body;
 
     if (!emailOrMobile || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email or mobile, and password are required',
-      });
+      return error(res, 'Email or mobile, and password are required', 400);
     }
 
     const user = await userModel.findByEmailOrMobile(emailOrMobile, emailOrMobile);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      return error(res, 'User not found', 404);
+    }
+
+    // Check if account is active (Soft Delete Check)
+    if (!user.IsActive) {
+        return error(res, 'This account has been deactivated.', 403);
     }
 
     const isValid = bcrypt.compareSync(password, user.PasswordHash);
 
     if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
+      return error(res, 'Invalid credentials', 401);
     }
 
     const token = jwt.sign(
@@ -98,19 +80,11 @@ exports.login = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      data: { user, token },
-    });
+    return success(res, { user, token }, 'Login successful');
 
   } catch (err) {
     console.error("Login error:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Login failed',
-      error: err.message,
-    });
+    return error(res, err.message);
   }
 };
 
@@ -121,10 +95,7 @@ exports.getProfile = async (req, res) => {
     const fullData = await userModel.getFullProfile(userId); 
 
     if (!fullData || !fullData.user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
+      return error(res, 'User not found', 404);
     }
 
     const responseData = {
@@ -134,31 +105,65 @@ exports.getProfile = async (req, res) => {
     
     delete responseData.PasswordHash;
 
-    return res.json({
-      success: true,
-      message: 'Profile fetched successfully',
-      data: responseData,
-    });
+    return success(res, responseData, 'Profile fetched successfully');
 
   } catch (err) {
     console.error("Get Profile error:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch profile',
-      error: err.message,
-    });
+    return error(res, err.message);
   }
 };
 
-// NEW: Update FCM Token
 exports.updateFcmToken = async (req, res) => {
     try {
         const { token } = req.body;
-        if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+        if (!token) return error(res, 'Token required', 400);
         
         await userModel.updateFcmToken(req.user.id, token);
-        return res.json({ success: true, message: 'FCM Token updated' });
+        return success(res, null, 'FCM Token updated');
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return error(res, err.message);
     }
+};
+
+// --- Change Password ---
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    const user = await userModel.findById(userId);
+    if (!user) return error(res, 'User not found', 404);
+
+    const isValid = bcrypt.compareSync(oldPassword, user.PasswordHash);
+    if (!isValid) {
+      return error(res, 'Incorrect old password', 400);
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    await userModel.updatePassword(userId, newHash);
+
+    return success(res, null, 'Password updated successfully');
+  } catch (err) {
+    return error(res, err.message);
+  }
+};
+
+// --- Delete Account (Soft Delete) ---
+exports.deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { password } = req.body; 
+
+    const user = await userModel.findById(userId);
+    if (!user) return error(res, 'User not found', 404);
+
+    const isValid = bcrypt.compareSync(password, user.PasswordHash);
+    if (!isValid) return error(res, 'Incorrect password', 400);
+
+    await userModel.updateStatus(userId, false); // Set IsActive = 0
+
+    return success(res, null, 'Account deactivated successfully');
+  } catch (err) {
+    return error(res, err.message);
+  }
 };

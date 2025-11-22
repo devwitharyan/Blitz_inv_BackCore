@@ -18,7 +18,6 @@ exports.create = async (data) => {
   ]);
 };
 
-// NEW FUNCTION: Check if review exists
 exports.exists = async (bookingId, serviceId) => {
   const query = `
     SELECT TOP 1 1 
@@ -32,8 +31,22 @@ exports.exists = async (bookingId, serviceId) => {
   return !!result;
 };
 
+// UPDATED: Fetch Customer Name & Image
 exports.listByProvider = async (providerId) => {
-  const query = `SELECT * FROM Reviews WHERE ProviderId = @providerId`;
+  const query = `
+    SELECT R.*, 
+           U.Name AS CustomerName,
+           (
+             SELECT TOP 1 Id 
+             FROM MediaFiles 
+             WHERE EntityId = U.Id AND MediaType = 'profile' 
+             ORDER BY CreatedAt DESC
+           ) AS CustomerImage
+    FROM Reviews R
+    JOIN Users U ON R.CustomerId = U.Id
+    WHERE R.ProviderId = @providerId
+    ORDER BY R.CreatedAt DESC
+  `;
   return base.execute(query, [{ name: 'providerId', type: sql.UniqueIdentifier, value: providerId }]);
 };
 
